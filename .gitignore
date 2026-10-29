@@ -80,3 +80,5 @@ mlruns/
 
 # AI-1에서 전달받은 실험 데이터 압축파일
 data/*.zip
+# 개인 참고용 문서 (GitHub 업로드 금지)
+docs/INFRIUM_PROJECT_API_GUIDE.md
