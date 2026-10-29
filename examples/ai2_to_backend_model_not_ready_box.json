@@ -1,0 +1,35 @@
+{
+  "schema_version": "ai2-risk-evidence-v1",
+  "bridge_type": "BOX",
+  "window_id": "SYNTHETIC_BOX_W001",
+  "timestamp": "2026-10-15T03:30:00+00:00",
+  "experiment_id": "SYNTHETIC_BOX_EXP001",
+  "event_time": {
+    "window_start": "2026-10-15 12:29:58.000000",
+    "window_start_us": 1792034998000000,
+    "window_end_us": 1792035000000000
+  },
+  "damage_class": null,
+  "damage_probabilities": null,
+  "risk_score": null,
+  "risk_level": null,
+  "risk_status": "EVALUATION_ERROR",
+  "data_quality": {
+    "statuses": [
+      "MISSING_REQUIRED"
+    ],
+    "primary_status": "MISSING_REQUIRED",
+    "not_evaluated": []
+  },
+  "evidence": {
+    "error": {
+      "code": "MODEL_NOT_READY",
+      "message": "A validated measurement-based AI2 model is not available."
+    }
+  },
+  "message_id": "SYNTHETIC-BOX-000001",
+  "processing_status": "PROCESSED",
+  "duplicate": false,
+  "out_of_order": false,
+  "received_at": "2026-10-15T03:30:00+00:00"
+}

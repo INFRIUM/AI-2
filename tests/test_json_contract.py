@@ -13,6 +13,8 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
+from src.ai1_adapter import to_ai2_payload
+from src.api_models import Ai1WindowRequest
 from src.baseline_manager import FEATURES
 from src.realtime_processor import RealtimeRiskProcessor
 from src.risk_evaluator import CLASS_ORDER
@@ -37,6 +39,13 @@ def example(name: str) -> dict:
     )
 
 
+def canonical_example(name: str) -> dict:
+    """Convert an HTTP request example into the AI2 processor contract."""
+    return to_ai2_payload(
+        Ai1WindowRequest.model_validate(example(name))
+    )
+
+
 class JsonContractTests(unittest.TestCase):
 
     def setUp(self):
@@ -47,37 +56,22 @@ class JsonContractTests(unittest.TestCase):
             model_root=MISSING_MODEL_ROOT,
         )
 
-    def test_box_input_contract(self):
-        payload = example("ai1_to_ai2_box.json")
+    def test_input_examples_are_valid_http_requests(self):
+        for bridge in ("BOX", "TRUSS"):
+            with self.subTest(bridge=bridge):
+                payload = example(
+                    f"ai1_to_ai2_{bridge.lower()}.json"
+                )
+                request = Ai1WindowRequest.model_validate(payload)
 
-        self.assertEqual(
-            payload["bridge_type"],
-            "BOX",
-        )
-        self.assertEqual(
-            len(payload["features"]),
-            len(FEATURES),
-        )
-        self.assertEqual(
-            set(payload["features"]),
-            set(FEATURES),
-        )
-
-    def test_truss_input_contract(self):
-        payload = example("ai1_to_ai2_truss.json")
-
-        self.assertEqual(
-            payload["bridge_type"],
-            "TRUSS",
-        )
-        self.assertEqual(
-            len(payload["features"]),
-            len(FEATURES),
-        )
-        self.assertEqual(
-            set(payload["features"]),
-            set(FEATURES),
-        )
+                self.assertEqual(
+                    request.bridge_type,
+                    bridge,
+                )
+                self.assertEqual(
+                    set(payload["ai1"]["features"]),
+                    set(FEATURES),
+                )
 
     def test_feature_names_and_model_c_order(self):
         """Verify declared contracts without loading trained artifacts."""
@@ -103,19 +97,19 @@ class JsonContractTests(unittest.TestCase):
                 else "ai1_to_ai2_truss.json"
             )
 
-            payload = example(name)
+            payload = canonical_example(name)
 
             self.assertEqual(
                 payload["bridge_type"],
                 bridge,
             )
             self.assertEqual(
-                set(payload["features"]),
-                set(FEATURES),
+                list(payload["features"]),
+                FEATURES,
             )
 
     def test_missing_required_field(self):
-        payload = example("ai1_to_ai2_box.json")
+        payload = canonical_example("ai1_to_ai2_box.json")
         payload.pop("features")
 
         result = self.processor.process(
@@ -133,7 +127,7 @@ class JsonContractTests(unittest.TestCase):
         )
 
     def test_invalid_bridge_type(self):
-        payload = example("ai1_to_ai2_box.json")
+        payload = canonical_example("ai1_to_ai2_box.json")
         payload["bridge_type"] = "ARCH"
 
         result = self.processor.process(
@@ -147,7 +141,7 @@ class JsonContractTests(unittest.TestCase):
         )
 
     def test_invalid_timestamp(self):
-        payload = example("ai1_to_ai2_box.json")
+        payload = canonical_example("ai1_to_ai2_box.json")
         payload["timestamp"] = "2026-10-15T12:30:00"
 
         result = self.processor.process(
@@ -161,7 +155,7 @@ class JsonContractTests(unittest.TestCase):
         )
 
     def test_output_contract_and_null_risk(self):
-        payload = example("ai1_to_ai2_box.json")
+        payload = canonical_example("ai1_to_ai2_box.json")
 
         result = self.processor.process(
             payload,
@@ -230,7 +224,7 @@ class JsonContractTests(unittest.TestCase):
         )
 
     def test_duplicate_window_policy(self):
-        payload = example("ai1_to_ai2_truss.json")
+        payload = canonical_example("ai1_to_ai2_truss.json")
 
         first = self.processor.process(
             copy.deepcopy(payload),
@@ -255,7 +249,7 @@ class JsonContractTests(unittest.TestCase):
         )
 
     def test_ai1_optional_fields(self):
-        payload = example("ai1_to_ai2_box.json")
+        payload = canonical_example("ai1_to_ai2_box.json")
         payload["window_id"] = "SYNTHETIC_BOX_OPTIONAL"
         payload.pop("ai1_result", None)
 
@@ -283,6 +277,22 @@ class JsonContractTests(unittest.TestCase):
         self.assertIsNone(
             result["risk_level"],
         )
+
+    def test_output_examples_match_current_processor_output(self):
+        for bridge in ("BOX", "TRUSS"):
+            with self.subTest(bridge=bridge):
+                low = bridge.lower()
+                result = self.processor.process(
+                    canonical_example(f"ai1_to_ai2_{low}.json"),
+                    now=NOW,
+                )
+
+                self.assertEqual(
+                    example(
+                        f"ai2_to_backend_model_not_ready_{low}.json"
+                    ),
+                    json.loads(json.dumps(result)),
+                )
 
 
 if __name__ == "__main__":
