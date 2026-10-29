@@ -27,6 +27,7 @@ MODEL_UNAVAILABLE_CODES = {
     "MODEL_FEATURE_MISMATCH",
     "MODEL_INFERENCE_FAILED",
     "MODEL_INFERENCE_INVALID",
+    "MODEL_NOT_READY"
 }
 CONFLICT_CODES = {"WINDOW_CONFLICT", "EXPERIMENT_WINDOW_BRIDGE_CONFLICT"}
 
@@ -79,9 +80,19 @@ def create_app(*, processor: RealtimeRiskProcessor | None = None, max_request_by
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        # Baselines are immutable artifacts and are loaded once for this process.
+        """Start the API even when measured-data artifacts are not ready."""
         if not hasattr(app.state, "processor"):
-            app.state.processor = RealtimeRiskProcessor(baseline_lookup=load_baseline_lookup())
+            try:
+                baseline_lookup = load_baseline_lookup()
+            except FeatureChangeInputError as error:
+                if error.code != "BASELINE_LOOKUP_MISSING":
+                    raise
+                baseline_lookup = {}
+
+            app.state.processor = RealtimeRiskProcessor(
+                baseline_lookup=baseline_lookup
+            )
+        
         yield
 
     app = FastAPI(title="INFRIUM AI② ingress", version="0.1.0", lifespan=lifespan)
