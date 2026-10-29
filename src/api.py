@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 
 from src.ai1_adapter import to_ai2_payload
 from src.api_models import Ai1WindowRequest
-from src.feature_change import load_baseline_lookup
+from src.feature_change import FeatureChangeInputError, load_baseline_lookup
 from src.realtime_processor import RealtimeRiskProcessor
 
 
