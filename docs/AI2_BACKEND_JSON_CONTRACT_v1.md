@@ -73,6 +73,8 @@ HTTP ingress에서 `ai1.warming_up=true`면 `AI1_WARMING_UP` 상태와 `ai1_stat
 
 현재 중복 캐시는 단일 프로세스 메모리다. 서버 재시작·다중 Uvicorn worker에서는 상태가 공유되지 않으므로 개발 서버는 단일 worker로 실행해야 한다.
 
-## 합성 출력 예시
+## 출력 예시
 
-[BOX 합성 출력](../examples/ai2_to_backend_box.json), [TRUSS 합성 출력](../examples/ai2_to_backend_truss.json)은 현 구현을 실행해 확인한 반환 구조를 바탕으로 만든 **합성 계약 예시**다. 가독성을 위해 `feature_changes`는 22개 중 한 Feature만 표시했으며, 실제 런타임은 22개 전체를 반환한다. 수치와 ID는 실제 HW 결과가 아니다.
+[BOX 출력](../examples/ai2_to_backend_model_not_ready_box.json), [TRUSS 출력](../examples/ai2_to_backend_model_not_ready_truss.json)은 [AI① 요청 예시](AI1_AI2_JSON_CONTRACT_v1.md#실제-입력-예시)를 현재 `RealtimeRiskProcessor.process()`에 넣었을 때의 **실제 반환값**이다. 승인된 실측 Model C가 아직 없으므로 `risk_status=EVALUATION_ERROR`, `evidence.error.code=MODEL_NOT_READY`이며 `damage_class`와 `damage_probabilities`는 `null`이다. HTTP endpoint는 이 경우 결과 본문 대신 `503 MODEL_NOT_READY`를 반환한다. `tests/test_json_contract.py`가 예시 파일과 실제 반환값이 일치하는지 확인한다.
+
+정상 분석 결과(`damage_class`, 확률, `feature_changes`, `xgboost_model_c` 포함) 예시는 승인된 실측 모델과 baseline로 실제 출력이 생긴 뒤 추가한다. 임의 수치로 만든 성공 예시는 실측 근거가 없으므로 두지 않는다.

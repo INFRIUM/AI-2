@@ -115,7 +115,7 @@ Model C artifact와 현재 `baseline_manager.FEATURES`의 순서는 다음과 �
 
 ## 실제 입력 예시
 
-[BOX 합성 예시](../examples/ai1_to_ai2_box.json), [TRUSS 합성 예시](../examples/ai1_to_ai2_truss.json)를 참조한다. 두 파일의 Feature 값 `0.0`은 계약 형식 검증용 placeholder이며 실제 센서값이 아니다.
+[BOX 합성 예시](../examples/ai1_to_ai2_box.json), [TRUSS 합성 예시](../examples/ai1_to_ai2_truss.json)를 참조한다. 두 파일은 AI①이 `POST /api/ai1/windows`로 그대로 보낼 수 있는 HTTP 요청 envelope이며, `tests/test_json_contract.py`가 `Ai1WindowRequest` 검증과 canonical 변환을 통과하는지 확인한다. Feature 값 `0.0`, AI① 점수 `0.0`, ID와 시각은 계약 형식 검증용 placeholder이며 실제 센서값이나 AI① 결과가 아니다. `raw.sensors`의 세부 필드는 API_SPEC 확인 전이므로 센서별 `null`로만 표시한다.
 
 ## 처리 정책
 

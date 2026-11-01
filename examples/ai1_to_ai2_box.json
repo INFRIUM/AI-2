@@ -1,20 +1,57 @@
 {
-  "schema_version": "synthetic-contract-v1",
+  "schema_version": "1.0",
+  "message_type": "ai1_window",
   "message_id": "SYNTHETIC-BOX-000001",
   "bridge_type": "BOX",
+  "experiment_id": "SYNTHETIC_BOX_EXP001",
   "window_id": "SYNTHETIC_BOX_W001",
-  "timestamp": "2026-10-15T12:30:00+09:00",
-  "features": {
-    "acc01_rms_x": 0.0, "acc01_rms_y": 0.0, "acc01_rms_z": 0.0,
-    "acc02_rms_x": 0.0, "acc02_rms_y": 0.0, "acc02_rms_z": 0.0,
-    "acc01_p2p_x": 0.0, "acc01_p2p_y": 0.0, "acc01_p2p_z": 0.0,
-    "acc02_p2p_x": 0.0, "acc02_p2p_y": 0.0, "acc02_p2p_z": 0.0,
-    "acc01_dom_freq_x": 0.0, "acc01_dom_freq_y": 0.0, "acc01_dom_freq_z": 0.0,
-    "acc02_dom_freq_x": 0.0, "acc02_dom_freq_y": 0.0, "acc02_dom_freq_z": 0.0,
-    "acc01_damping_z": 0.0, "acc02_damping_z": 0.0,
-    "cross_amp_ratio_L4_L2_z": 0.0, "cross_torsion_y_z_L2": 0.0
+  "window_start": "2026-10-15 12:29:58.000000",
+  "window_start_us": 1792034998000000,
+  "window_end_us": 1792035000000000,
+  "raw": {
+    "start_us": 1792034998000000,
+    "end_us": 1792035000000000,
+    "sensors": {
+      "acc01": null,
+      "acc02": null
+    }
   },
-  "environment": {"load_level_kg": 1.0, "load_position": "C", "temperature_c": 24.5},
-  "ai1_result": {"anomaly_score": 0.42, "decision_ratio": 0.8, "raw_prediction": "Normal", "prediction": "Normal"},
-  "example_note": "SYNTHETIC CONTRACT EXAMPLE ONLY. All feature values are placeholders, not HW measurements."
+  "ai1": {
+    "prediction": "Normal",
+    "raw_prediction": "Normal",
+    "anomaly_score": 0.0,
+    "decision_ratio": 0.0,
+    "warming_up": false,
+    "condition": {
+      "condition": "1kg-C",
+      "load_level_kg": 1.0,
+      "load_position": "C",
+      "temperature_c": 24.5
+    },
+    "features": {
+      "acc01_rms_x": 0.0,
+      "acc01_rms_y": 0.0,
+      "acc01_rms_z": 0.0,
+      "acc02_rms_x": 0.0,
+      "acc02_rms_y": 0.0,
+      "acc02_rms_z": 0.0,
+      "acc01_p2p_x": 0.0,
+      "acc01_p2p_y": 0.0,
+      "acc01_p2p_z": 0.0,
+      "acc02_p2p_x": 0.0,
+      "acc02_p2p_y": 0.0,
+      "acc02_p2p_z": 0.0,
+      "acc01_dom_freq_x": 0.0,
+      "acc01_dom_freq_y": 0.0,
+      "acc01_dom_freq_z": 0.0,
+      "acc02_dom_freq_x": 0.0,
+      "acc02_dom_freq_y": 0.0,
+      "acc02_dom_freq_z": 0.0,
+      "acc01_damping_z": 0.0,
+      "acc02_damping_z": 0.0,
+      "cross_amp_ratio_L4_L2_z": 0.0,
+      "cross_torsion_y_z_L2": 0.0
+    }
+  },
+  "example_note": "SYNTHETIC CONTRACT EXAMPLE ONLY. 모든 값은 형식 검증용 placeholder이며 실제 HW 측정값이나 AI① 결과가 아니다."
 }
