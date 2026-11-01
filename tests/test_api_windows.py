@@ -9,15 +9,19 @@ No predictive performance is measured or claimed.
 from __future__ import annotations
 
 import copy
+import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from pathlib import Path
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 from src.ai1_adapter import to_ai2_payload
 from src.api import create_app
 from src.api_models import Ai1WindowRequest
+from src.feature_change import FeatureChangeInputError, load_baseline_lookup
 from src.realtime_processor import RealtimeRiskProcessor
 from tests.test_api_models import request_payload
 
@@ -377,6 +381,62 @@ class ApiWindowTests(unittest.TestCase):
                 "processed_window_count"
             ],
             1,
+        )
+
+
+class ApiStartupTests(unittest.TestCase):
+    """Exercise the real lifespan path instead of an injected processor."""
+
+    def startup_patches(self, lookup_path: Path):
+        return (
+            patch(
+                "src.api.load_baseline_lookup",
+                lambda: load_baseline_lookup(lookup_path),
+            ),
+            patch(
+                "src.api.RealtimeRiskProcessor",
+                partial(
+                    RealtimeRiskProcessor,
+                    model_root=MISSING_MODEL_ROOT,
+                ),
+            ),
+        )
+
+    def test_missing_baseline_starts_and_returns_model_not_ready(self):
+        with tempfile.TemporaryDirectory() as directory:
+            lookup_path = Path(directory) / "missing_lookup.json"
+            lookup_patch, processor_patch = self.startup_patches(
+                lookup_path
+            )
+
+            with lookup_patch, processor_patch, client_for() as client:
+                response = client.post(
+                    "/api/ai1/windows",
+                    json=request_payload(),
+                )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(
+            response.json()["detail"]["code"],
+            "MODEL_NOT_READY",
+        )
+
+    def test_invalid_baseline_is_not_silently_ignored(self):
+        with tempfile.TemporaryDirectory() as directory:
+            lookup_path = Path(directory) / "invalid_lookup.json"
+            lookup_path.write_text("{not json", encoding="utf-8")
+            lookup_patch, processor_patch = self.startup_patches(
+                lookup_path
+            )
+
+            with lookup_patch, processor_patch:
+                with self.assertRaises(FeatureChangeInputError) as caught:
+                    with client_for():
+                        pass
+
+        self.assertEqual(
+            caught.exception.code,
+            "BASELINE_LOOKUP_INVALID",
         )
 
 
