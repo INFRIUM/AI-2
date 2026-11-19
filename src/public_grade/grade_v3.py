@@ -41,6 +41,30 @@ DIR_12_DEV = Path("data/raw/ai1_public_1.2_dev")
 SM_BOUNDS = {"deg": (1.2336279781, 3.5955651454), "raw": (1.6878412257, 2.4703492908)}
 
 
+AXIS = {"z": "수직", "y": "횡방향"}
+
+
+def sensor_labels(data_dir: Path, dataset: str) -> dict:
+    """Short sensor name -> readable label with location, from AI① sensor_info.csv."""
+    info = pd.read_csv(Path(data_dir) / "sensor_info.csv", encoding="utf-8-sig")
+    info = info[info["dataset"] == dataset]
+    out = {}
+    for _, r in info.iterrows():
+        loc = str(r["sensor_location"]).split(" (")[0]
+        num = str(r["source_sensor"]).split(" ")[0]
+        out[r["결과파일_약칭"]] = (f"가속도계 {r['결과파일_약칭']}(센서 {num}, {loc})" if dataset == "ponte_moesa"
+                                 else f"가속도계 {r['결과파일_약칭']}({loc})")
+    return out
+
+
+def pair_name(labels: dict, a: str, b: str, axis: str = "z") -> str:
+    return f"{labels[a]}–{labels[b]} 전달 관계(1-TAC, {AXIS[axis]})"
+
+
+def sensor_ar_columns(sensor: str, axis: str = "z") -> list[str]:
+    return [f"{sensor}_ar{k}_{axis}" for k in range(1, 6)]
+
+
 # ------------------------------------------------------------------ core rule
 
 @dataclass
@@ -137,17 +161,34 @@ def indicator_text(name: str, value, lv, b: Bounds) -> str:
     return f"{name} {v} (정상 상한 {_num(b.low)} 이하)"
 
 
+def scalar_level(value, b: Bounds) -> float:
+    if value is None or pd.isna(value):
+        return np.nan
+    return 2.0 if value > b.high else 1.0 if value > b.low else 0.0
+
+
+def sensor_breakdown(parts: list, values: dict, sub_bounds: dict) -> str:
+    """Per-sensor values of a combined indicator (explanation only, not used for the grade)."""
+    texts = [indicator_text(label, values.get(col), scalar_level(values.get(col), sub_bounds[col]),
+                            sub_bounds[col]) for col, label in parts]
+    return " — 센서별: " + ", ".join(texts)
+
+
 def reason(grade: str, values: dict, levels: dict, names: dict, bounds_: dict,
-           counts: dict | None, sequential: bool) -> str:
-    """판정 사유: which indicator, its value, the boundary numbers, and the persistence rule."""
+           counts: dict | None, sequential: bool, subs: dict | None = None,
+           sub_bounds: dict | None = None) -> str:
+    """판정 사유: which sensor/indicator, its value, the boundary numbers, and the persistence rule."""
     if grade == HELD:
         return "판정 보류: AI① 보류 표시 (진동이 센서 잡음 수준이거나 센서 값 없음)"
     if grade == UNDECIDED:
         return "판정 불가: 지표 값 없음"
-    texts = {c: indicator_text(names[c], values[c], levels[c], bounds_[c]) for c in names}
+    subs = subs or {}
+    texts = {c: indicator_text(names[c], values[c], levels[c], bounds_[c])
+             + (sensor_breakdown(subs[c], values, sub_bounds) if c in subs and not pd.isna(values[c]) else "")
+             for c in names}
     over = [texts[c] for c in names if not np.isnan(levels[c]) and levels[c] >= 1]
     if grade == "정상" and not over:
-        return "모든 지표 정상 범위: " + ", ".join(texts.values())
+        return "모든 지표 정상 범위: " + " / ".join(texts.values())
     head = " / ".join(over) if over else "이번 Window는 모든 지표 정상 범위"
     if not sequential:
         n_low = sum(1 for c in names if not np.isnan(levels[c]) and levels[c] >= 1)
@@ -178,7 +219,8 @@ class Result:
     notes: list = field(default_factory=list)
 
 
-def _finish(frame, levels, names, held, role, sequential, bounds_, step=None, group_col="source_record"):
+def _finish(frame, levels, names, held, role, sequential, bounds_, step=None, group_col="source_record",
+            subs=None, sub_bounds=None):
     out = frame[["experiment_id", "window_start_us", "source_record", "damage_stage",
                  "label_status", "ai1_split"]].copy()
     for col in levels.columns:
@@ -186,6 +228,12 @@ def _finish(frame, levels, names, held, role, sequential, bounds_, step=None, gr
         out[f"level_{col}"] = levels[col]
         out[f"bound_normal_{col}"] = bounds_[col].low
         out[f"bound_danger_{col}"] = bounds_[col].high
+    subs, sub_bounds = subs or {}, sub_bounds or {}
+    sub_cols = [col for parts in subs.values() for col, _ in parts]
+    for col in sub_cols:
+        out[f"value_{col}"] = frame[col]
+        out[f"bound_normal_{col}"] = sub_bounds[col].low
+        out[f"bound_danger_{col}"] = sub_bounds[col].high
     e = levels.max(axis=1, skipna=True)
     counts = None
     if sequential:
@@ -199,10 +247,10 @@ def _finish(frame, levels, names, held, role, sequential, bounds_, step=None, gr
         out["window_level"], out["sustained_level"] = e, np.nan
     grade[held.to_numpy()] = HELD
     out["grade"] = grade
-    values = frame.reindex(columns=list(levels.columns))
+    values = frame.reindex(columns=list(levels.columns) + sub_cols)
     out["reason"] = [
         reason(gr, values.loc[i].to_dict(), levels.loc[i].to_dict(), names, bounds_,
-               None if counts is None else counts.loc[i].to_dict(), sequential)
+               None if counts is None else counts.loc[i].to_dict(), sequential, subs, sub_bounds)
         for i, gr in zip(frame.index, grade.to_numpy())
     ]
     out["role"] = role
@@ -215,7 +263,8 @@ def box(kind: str) -> Result:
     f = deg if kind == "deg" else raw
     normal = (f["damage_stage"] == "DS2") & (f["ai1_split"] != "test")
     levels, b = pd.DataFrame(index=f.index), {}
-    names = {"tac_4_2_z": "1-TAC 4-2", "tac_2_3_z": "1-TAC 2-3"}
+    lab = sensor_labels(DIR_11, "ponte_moesa")
+    names = {"tac_4_2_z": pair_name(lab, "acc01", "acc02"), "tac_2_3_z": pair_name(lab, "acc02", "acc03")}
     holds = {"tac_4_2_z": f["held_main"], "tac_2_3_z": f["held_session"]}
     for col in names:
         ref = f.loc[normal & ~holds[col], col]
@@ -237,16 +286,23 @@ def hbta_nm(kind: str) -> Result:
     held = f["held_main"].copy()
     fit = (f["ai1_split"] == "train") & ~held
     f["ar_z"], _ = g.mahalanobis(f[fit], f, g.ar_columns("z"))
+    lab = sensor_labels(DIR_11, "hbta")
+    subs = {"ar_z": []}
+    for sensor in ("acc01", "acc02"):
+        f[f"ar_z_{sensor}"], _ = g.mahalanobis(f[fit], f, sensor_ar_columns(sensor))
+        subs["ar_z"].append((f"ar_z_{sensor}", lab[sensor]))
     normal = (f["damage_stage"] == "UDS") & f["ai1_split"].isin(["val", "ai2_calib"]) & ~held
-    names = {"ar_z": "AR z 거리", "tac_a_b_z": "1-TAC z"}
+    names = {"ar_z": "AR 진동 특성 거리(acc01+acc02 합산, 수직)", "tac_a_b_z": pair_name(lab, "acc01", "acc02")}
     levels, b = pd.DataFrame(index=f.index), {}
     for col in names:
         b[col] = bounds(f.loc[normal, col])
         levels[col] = level(f[col], b[col])
     levels[held.to_numpy()] = np.nan
+    sub_b = {col: bounds(f.loc[normal, col]) for col, _ in subs["ar_z"]}
     role = np.where(f["ai1_split"].eq("train") & f["damage_stage"].eq("UDS"), "기준 적합",
                     np.where(normal, "정상 기준", "판정"))
-    w = _finish(f, levels, names, held, role, sequential=True, bounds_=b, step=tv.WINDOW_S)
+    w = _finish(f, levels, names, held, role, sequential=True, bounds_=b, step=tv.WINDOW_S,
+                subs=subs, sub_bounds=sub_b)
     return Result("hbta_nm", "Truss", kind, w, {k: vars(v) for k, v in b.items()},
                   "UDS 두 날짜(9/22, 9/27) val·ai2_calib. AR 평균·공분산은 AI① train",
                   ["노이즈 가진(NM) 10개 측정", "1-TAC는 Window 3개가 같은 값을 공유"])
@@ -273,15 +329,22 @@ def hbta_sm(kind: str) -> Result:
             part = tgt.reset_index().copy()
             part["t_key"] = part["t"].round(2)
             part["sm_d"] = part["t_key"].map(d)
+            for sensor in ("acc01", "acc02"):
+                part[f"sm_d_{sensor}"] = part["t_key"].map(tv.distance(base, tgt, sensor_ar_columns(sensor)))
             part["baseline"] = base_name
             rows.append(part)
     f = pd.concat(rows, ignore_index=True)
-    names = {"sm_d": "같은 시각 AR 차이"}
+    lab = sensor_labels(DIR_12, "hbta")
+    names = {"sm_d": "같은 시각 AR 차이(acc01+acc02 합산, 수직)"}
     levels = pd.DataFrame({"sm_d": level(f["sm_d"], b)})
+    subs = {"sm_d": [(f"sm_d_{s_}", lab[s_]) for s_ in ("acc01", "acc02")]}
+    dev_data = data[1]
+    sub_b = {f"sm_d_{s_}": bounds(tv.dev_pooled(dev, dev_data, sensor_ar_columns(s_))) for s_ in ("acc01", "acc02")}
     held = f["held"].astype(bool)
     is_dev = f["source_record"].isin([r for pair in tv.DEV_RECORDS.values() for r in pair])
     role = np.where(is_dev, "판정 (기준값 산출에 쓴 개발용 정상)", "판정")
-    w = _finish(f, levels, names, held, role, sequential=True, bounds_={"sm_d": b}, step=tv.WINDOW_S)
+    w = _finish(f, levels, names, held, role, sequential=True, bounds_={"sm_d": b}, step=tv.WINDOW_S,
+                subs=subs, sub_bounds=sub_b)
     w["baseline"] = f["baseline"].to_numpy()
     w["condition"] = f["condition"].to_numpy()
     return Result("hbta_sm", "Truss", kind, w, {"sm_d": vars(b)},
@@ -300,16 +363,26 @@ def old_ada(kind: str) -> Result:
     for idx in f.index[train]:
         others = f[train & (f.index != idx)]
         f.loc[idx, "ar_z"] = g.standardized_euclid(others, f.loc[[idx]], cols)[0].iloc[0]
+    lab = sensor_labels(DIR_11, "old_ada")
+    subs = {"ar_z": []}
+    for sensor in ("acc01", "acc02"):
+        sc, col = sensor_ar_columns(sensor), f"ar_z_{sensor}"
+        f[col], _ = g.standardized_euclid(f[train], f, sc)
+        for idx in f.index[train]:
+            others = f[train & (f.index != idx)]
+            f.loc[idx, col] = g.standardized_euclid(others, f.loc[[idx]], sc)[0].iloc[0]
+        subs["ar_z"].append((col, lab[sensor]))
     normal = (f["damage_stage"] == "INT") & f["ai1_split"].isin(["train", "ai2_calib"]) & ~f["held_main"]
-    names = {"ar_z": "AR z 거리", "tac_a_b_z": "1-TAC z"}
+    names = {"ar_z": "AR 진동 특성 거리(acc01+acc02 합산, 수직)", "tac_a_b_z": pair_name(lab, "acc01", "acc02")}
     levels, b = pd.DataFrame(index=f.index), {}
     for col in names:
         b[col] = bounds(f.loc[normal, col])
         levels[col] = level(f[col], b[col])
     held = f["held_main"].copy()
     levels[held.to_numpy()] = np.nan
+    sub_b = {col: bounds(f.loc[normal, col]) for col, _ in subs["ar_z"]}
     role = np.where(normal, "정상 기준", "판정")
-    w = _finish(f, levels, names, held, role, sequential=False, bounds_=b)
+    w = _finish(f, levels, names, held, role, sequential=False, bounds_=b, subs=subs, sub_bounds=sub_b)
     w["speed_kmh"] = f["speed_kmh"].to_numpy()
     return Result("old_ada", "점검용", kind, w, {k: vars(v) for k, v in b.items()},
                   "INT 40km/h train 4회(한 회씩 빼고 거리 계산)·ai2_calib 3회",

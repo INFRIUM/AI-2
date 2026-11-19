@@ -77,7 +77,7 @@ def test_reason_danger_shows_values_bounds_and_persistence():
 def test_reason_normal_lists_all_indicators_with_upper_bound():
     text = gv.reason("정상", {"x": 3.56, "y": 0.654}, {"x": 0.0, "y": 0.0}, N, B,
                      {"n_low": 0.0, "n_high": 0.0}, sequential=True)
-    assert text == "모든 지표 정상 범위: AR z 거리 3.56 (정상 상한 4.49 이하), 1-TAC z 0.654 (정상 상한 0.715 이하)"
+    assert text == "모든 지표 정상 범위: AR z 거리 3.56 (정상 상한 4.49 이하) / 1-TAC z 0.654 (정상 상한 0.715 이하)"
 
 
 def test_reason_carried_grade_explains_current_window_is_normal():
@@ -98,3 +98,22 @@ def test_reason_caution_without_history_and_held():
 def test_reason_single_window_agreement():
     text = gv.reason("경고", {"x": 7.0, "y": 0.70}, {"x": 2.0, "y": 0.0}, N, B, None, sequential=False)
     assert "정상 상한 초과 1개, 위험 경계 초과 1개" in text
+
+
+def test_reason_shows_each_sensor_of_a_combined_indicator():
+    subs = {"x": [("x1", "가속도계 acc01(L/4 부근)"), ("x2", "가속도계 acc02(L/2)")]}
+    sub_b = {"x1": gv.Bounds(3.73, 5.07, 64), "x2": gv.Bounds(3.5, 3.79, 64)}
+    text = gv.reason("위험", {"x": 6.94, "y": 0.70, "x1": 5.12, "x2": 2.0},
+                     {"x": 2.0, "y": 0.0}, N, B, {"n_low": 3.0, "n_high": 2.0}, True, subs, sub_b)
+    assert "센서별: 가속도계 acc01(L/4 부근) 5.12: 위험 경계 5.07 초과" in text
+    assert "가속도계 acc02(L/2) 2 (정상 상한 3.5 이하)" in text
+
+
+def test_sensor_labels_from_sensor_info(tmp_path):
+    pd.DataFrame([
+        {"dataset": "hbta", "결과파일_약칭": "acc01", "source_sensor": "AG03", "sensor_location": "L/4 부근"},
+        {"dataset": "ponte_moesa", "결과파일_약칭": "acc01", "source_sensor": "4 (이동, S5)",
+         "sensor_location": "2경간 3/4L (L/4 대칭 위치)"},
+    ]).to_csv(tmp_path / "sensor_info.csv", index=False, encoding="utf-8-sig")
+    assert gv.sensor_labels(tmp_path, "hbta") == {"acc01": "가속도계 acc01(L/4 부근)"}
+    assert gv.sensor_labels(tmp_path, "ponte_moesa") == {"acc01": "가속도계 acc01(센서 4, 2경간 3/4L)"}
