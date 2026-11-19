@@ -143,52 +143,111 @@ def balanced_weights(y: pd.Series) -> np.ndarray:
     return y.map(lambda v: len(y) / (len(counts) * counts[v])).to_numpy(float)
 
 
-def run_kind(frame: pd.DataFrame, names: dict) -> tuple[list, pd.DataFrame, pd.Series]:
-    X = frame[FEATURES].apply(pd.to_numeric, errors="coerce")
-    name_list = [names[f] for f in FEATURES]
-    folds, preds, gains = [], [], []
+ID_COLUMNS = ["experiment_id", "window_start_us", "source_record", "condition", "damage_stage"]
+LABEL_COLUMNS = ["damaged", "grade"]
+MODEL_STATUS = "개발용 실험 모델 (이미 본 데이터). 배포·API 연결 금지, models/measured/ 아님"
+
+
+def write_json(path: Path, obj) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(tv._jsonable(obj), ensure_ascii=False, indent=1))
+
+
+def save_dataset(frame: pd.DataFrame, path: Path) -> None:
+    """Exact model input: id columns, labels (not inputs), then the 67 input features."""
+    out = frame[ID_COLUMNS + LABEL_COLUMNS + FEATURES]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    out.to_csv(path, index=False, encoding="utf-8-sig")
+
+
+def fold_plan(frame: pd.DataFrame) -> list[dict]:
+    plan = []
     for held in CONDITIONS:
         test = frame["condition"] == held
+        plan.append({
+            "model_folder": f"heldout_{held}",
+            "train_conditions": [c for c in CONDITIONS if c != held], "test_condition": held,
+            "n_train_windows": int((~test).sum()), "n_test_windows": int(test.sum()),
+            "train_records": sorted(frame.loc[~test, "source_record"].unique()),
+            "test_records": sorted(frame.loc[test, "source_record"].unique()),
+        })
+    return plan
+
+
+def binary_metrics(part: pd.DataFrame) -> dict:
+    normal, dmg = part[part["damage_stage"] == "UDS"], part[part["damage_stage"] != "UDS"]
+    danger = part[part["damage_stage"].isin(DANGER)]
+    return {
+        "auc_normal_vs_damaged": auc(normal["p_damaged"], dmg["p_damaged"]),
+        "auc_normal_vs_danger": auc(normal["p_damaged"], danger["p_damaged"]),
+        "false_alarm": float(normal["pred_damaged"].mean()),
+        "false_alarm_by_record": normal.groupby("source_record")["pred_damaged"].mean().round(3).to_dict(),
+        "detection_danger": float(danger["pred_damaged"].mean()),
+        "detection_all_damage": float(dmg["pred_damaged"].mean()),
+        "detection_by_state": dmg.groupby("damage_stage")["pred_damaged"].mean().round(3).to_dict(),
+    }
+
+
+def grade_metrics(part: pd.DataFrame) -> dict:
+    confusion = pd.crosstab(part["grade"], part["pred_grade"]).reindex(index=GRADES, columns=GRADES).fillna(0)
+    mix = pd.crosstab(part["damage_stage"], part["pred_grade"], normalize="index").reindex(columns=GRADES).fillna(0)
+    return {
+        "grade_accuracy": float((part["pred_grade"] == part["grade"]).mean()),
+        "confusion_true_by_pred": confusion.astype(int).to_dict(orient="index"),
+        "pred_grade_mix_by_state": mix.round(3).to_dict(orient="index"),
+    }
+
+
+def run_kind(frame: pd.DataFrame, names: dict, out: Path, kind: str) -> tuple[list, pd.DataFrame, pd.Series]:
+    """Train and evaluate the 8 models of one data kind; write each model's folder."""
+    X = frame[FEATURES].apply(pd.to_numeric, errors="coerce")
+    name_list = [names[f] for f in FEATURES]
+    codes = frame["grade"].map({g: i for i, g in enumerate(GRADES)})
+    keep = ID_COLUMNS + ["grade", "window_start_s"]
+    folds, preds, gains = [], [], []
+    for plan in fold_plan(frame):
+        held = plan["test_condition"]
+        test = frame["condition"] == held
         train = ~test
+        dm = DMatrix(X[test])
+        xv = X[test].to_numpy(float)
+
         binary = XGBClassifier(objective="binary:logistic", **PARAMS)
         binary.fit(X[train], frame.loc[train, "damaged"], sample_weight=balanced_weights(frame.loc[train, "damaged"]))
         p = binary.predict_proba(X[test])[:, 1]
+        c_bin = binary.get_booster().predict(dm, pred_contribs=True)[:, :-1]
+        b_part = frame.loc[test, keep].copy()
+        b_part["p_damaged"], b_part["pred_damaged"] = p, (p > 0.5).astype(int)
+        b_part["reason"] = [binary_reason(p[i], xv[i], c_bin[i], name_list) for i in range(len(b_part))]
 
-        codes = frame["grade"].map({g: i for i, g in enumerate(GRADES)})
         multi = XGBClassifier(objective="multi:softprob", num_class=4, **PARAMS)
         multi.fit(X[train], codes[train], sample_weight=balanced_weights(codes[train]))
         grade_prob = multi.predict_proba(X[test])
         grade_idx = grade_prob.argmax(axis=1)
         grade_pred = np.array(GRADES)[grade_idx]
-
-        # SHAP contributions (TreeSHAP built into XGBoost), last column = bias
-        dm = DMatrix(X[test])
-        c_bin = binary.get_booster().predict(dm, pred_contribs=True)[:, :-1]
         c_multi = multi.get_booster().predict(dm, pred_contribs=True)[:, :, :-1]
-        xv = X[test].to_numpy(float)
+        g_part = frame.loc[test, keep].copy()
+        g_part["pred_grade"] = grade_pred
+        for k, gname in enumerate(GRADES):
+            g_part[f"p_{gname}"] = grade_prob[:, k]
+        g_part["grade_reason"] = [grade_reason(grade_pred[i], grade_prob[i, grade_idx[i]], xv[i],
+                                               c_multi[i, grade_idx[i]], name_list) for i in range(len(g_part))]
 
-        part = frame.loc[test, ["condition", "source_record", "damage_stage", "grade", "window_start_s"]].copy()
-        part["p_damaged"], part["pred_damaged"], part["pred_grade"] = p, (p > 0.5).astype(int), grade_pred
-        part["reason"] = [binary_reason(p[i], xv[i], c_bin[i], name_list) for i in range(len(part))]
-        part["grade_reason"] = [grade_reason(grade_pred[i], grade_prob[i, grade_idx[i]], xv[i],
-                                             c_multi[i, grade_idx[i]], name_list) for i in range(len(part))]
-        preds.append(part)
+        b_metrics, g_metrics = binary_metrics(b_part), grade_metrics(g_part)
+        common = {"status": MODEL_STATUS, "data_kind": kind, **plan,
+                  "dataset_file": f"dataset/{kind}_dataset.csv", "features": len(FEATURES), "params": PARAMS}
+        for task, model, part, metrics in (("binary", binary, b_part, b_metrics), ("grade", multi, g_part, g_metrics)):
+            folder = out / kind / task / plan["model_folder"]
+            folder.mkdir(parents=True, exist_ok=True)
+            model.save_model(folder / "model.json")
+            part.to_csv(folder / "predictions.csv", index=False, encoding="utf-8-sig")
+            write_json(folder / "metrics.json", {**common, "task": task, "metrics": metrics})
+
+        merged = b_part.join(g_part[["pred_grade", "grade_reason"]])
+        preds.append(merged)
         gains.append(pd.Series(binary.get_booster().get_score(importance_type="gain")))
-
-        normal, dmg = part[part["damage_stage"] == "UDS"], part[part["damage_stage"] != "UDS"]
-        danger = part[part["damage_stage"].isin(DANGER)]
-        folds.append({
-            "held_out": held,
-            "n_train": int(train.sum()), "n_test": int(test.sum()),
-            "auc_normal_vs_damaged": auc(normal["p_damaged"], dmg["p_damaged"]),
-            "auc_normal_vs_danger": auc(normal["p_damaged"], danger["p_damaged"]),
-            "false_alarm": float(normal["pred_damaged"].mean()),
-            "false_alarm_by_record": normal.groupby("source_record")["pred_damaged"].mean().round(3).to_dict(),
-            "detection_danger": float(danger["pred_damaged"].mean()),
-            "detection_all_damage": float(dmg["pred_damaged"].mean()),
-            "detection_by_state": dmg.groupby("damage_stage")["pred_damaged"].mean().round(3).to_dict(),
-            "grade_accuracy": float((part["pred_grade"] == part["grade"]).mean()),
-        })
+        folds.append({"held_out": held, "n_train": plan["n_train_windows"], "n_test": plan["n_test_windows"],
+                      **b_metrics, "grade_accuracy": g_metrics["grade_accuracy"]})
     gain = pd.concat(gains, axis=1).fillna(0).mean(axis=1).sort_values(ascending=False)
     return folds, pd.concat(preds), gain
 
@@ -200,13 +259,21 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     frames = load_frames()
     names = feature_labels(sensor_labels(Path("data/raw/ai1_public_1.2"), "hbta"))
-    summary = {"note": "개발용 실험 (이미 본 데이터, 결과 열람 후). 성능 근거 아님. 모델 저장·API 연결 없음",
+    summary = {"note": "개발용 실험 (이미 본 데이터, 결과 열람 후). 성능 근거 아님. 모델은 개발용 폴더에만 저장, API 연결 없음",
                "design": __doc__.split("Design")[1].split("Usage")[0].strip(),
                "features": FEATURES, "params": PARAMS, "code_commit": tv.git_commit(), "models": {}}
-    args.out_dir.mkdir(parents=True, exist_ok=True)
+    out = args.out_dir
+    out.mkdir(parents=True, exist_ok=True)
+    write_json(out / "dataset" / "folds.json", {
+        "note": "모델 폴더 heldout_<조건> = 그 조건을 빼고 학습, 그 조건으로 평가",
+        "input_features": [{"column": f, "name": names[f]} for f in FEATURES],
+        "label_columns": {"damaged": "0 정상(UDS), 1 손상(DS1–DS8)", "grade": "v1 기대 등급 (정상/주의/경고/위험)"},
+        "folds": fold_plan(frames["deg"]),
+    })
     for kind, frame in frames.items():
-        folds, preds, gain = run_kind(frame, names)
-        preds.to_csv(args.out_dir / f"xgb_sm_{kind}_predictions.csv", index=False, encoding="utf-8-sig")
+        save_dataset(frame, out / "dataset" / f"{kind}_dataset.csv")
+        folds, preds, gain = run_kind(frame, names, out, kind)
+        preds.to_csv(out / kind / "all_predictions.csv", index=False, encoding="utf-8-sig")
         mix = pd.crosstab(preds["damage_stage"], preds["pred_grade"], normalize="index").reindex(columns=GRADES).fillna(0)
         summary["models"][kind] = {
             "n_windows": int(len(frame)), "folds": folds,
@@ -220,8 +287,7 @@ def main(argv=None) -> int:
         print(f"[{kind}] AUC 정상vs손상 {m['auc_normal_vs_damaged']:.3f}, 정상vs위험 {m['auc_normal_vs_danger']:.3f}, "
               f"오경보 {m['false_alarm']:.3f}, 위험 탐지 {m['detection_danger']:.3f}, "
               f"손상 전체 탐지 {m['detection_all_damage']:.3f}, 등급 정확도 {m['grade_accuracy']:.3f}")
-    args.summary.parent.mkdir(parents=True, exist_ok=True)
-    args.summary.write_text(json.dumps(tv._jsonable(summary), ensure_ascii=False, indent=1))
+    write_json(args.summary, summary)
     return 0
 
 
