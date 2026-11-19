@@ -1,5 +1,5 @@
 {
- "note": "개발용 실험 (이미 본 데이터, 결과 열람 후). 성능 근거 아님. 모델 저장·API 연결 없음",
+ "note": "개발용 실험 (이미 본 데이터, 결과 열람 후). 성능 근거 아님. 모델은 개발용 폴더에만 저장, API 연결 없음",
  "design": "(fixed before the first run, 2026-11-19):\n  data      HBTA SM: AI1-public-1.2 (34 recordings) + 1.2-dev (6 normal)\n            4 conditions (P1 Y, P1 Z, P2 Y, P2 Z) x (2 normal + DS1-DS8)\n  windows   degraded hold_main = False (same windows for raw and deg models)\n  features  window-intrinsic AI① features only (FEATURES below); no 1-TAC,\n            no AI① v2 features (they depend on AI① NM references), no AI①\n            results, no labels / dates / temperature / train passing\n  models    two separate XGBoost models: raw features, degraded features\n  tasks     binary: normal (UDS) vs damaged (DS1-DS8)\n            grade : 정상 / 주의 / 경고 / 위험 by the v1 mapping\n  split     leave one condition out (4 folds): train on 3 conditions,\n            evaluate on the held-out condition (recordings never seen in training)\n  params    fixed, no tuning (PARAMS), class weights balanced per fold\n  metrics   AUC (normal vs damaged, normal vs danger DS2+DS8), at p > 0.5:\n            false alarm on normal windows, detection on danger and all damage,\n            per-state detection; grade accuracy and per-state grade mix;\n            top features by gain",
  "features": [
   "acc01_mean_y",
@@ -82,7 +82,7 @@
   "random_state": 20261109,
   "n_jobs": 4
  },
- "code_commit": "c07a5ed27d5b4eb6d1900d291f3343eb43531363",
+ "code_commit": "7159e402a8f744b54cfd3557589d6e3d7c380ae1",
  "models": {
   "raw": {
    "n_windows": 1321,
