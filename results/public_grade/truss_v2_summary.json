@@ -1,0 +1,766 @@
+{
+ "prereg": "docs/AI2_PUBLIC_GRADE_PREREG_v2_TRUSS.md",
+ "prereg_sha256": "72266946017f9fe10d94a08a26819eb4dcb322a8b821dda9dde505f091b66499",
+ "code_commit": "11c1a8b4caf77c5d7f75aa49b2c116e2ad9c80ad",
+ "inputs": {
+  "check": {
+   "column_guide.csv": "9de3203173c93f37f27359b6f9c62f2d",
+   "experiment_labels.csv": "8bc0ac103c76ce0069f5715ed7b4ac30",
+   "hbta_anomaly_results_deg.csv": "7e96b7c5cc41d9d6c0068adf7aefdf1d",
+   "hbta_anomaly_results_raw.csv": "77e065310deec93757ee324d14b5e1d0",
+   "hbta_as.csv": "aa7567d3b4e9c23b021a3f7069d51834",
+   "sensor_info.csv": "2e31ff0b6970696b397253ce991c8f32"
+  },
+  "dev": {
+   "column_guide.csv": "9de3203173c93f37f27359b6f9c62f2d",
+   "experiment_labels.csv": "7ef9ba02f8abd7393c1d57fdc46b4702",
+   "hbta_anomaly_results_deg.csv": "732fa28813512304e90b8a43ec4f8c08",
+   "hbta_anomaly_results_raw.csv": "d01d3e7ad57b2f5de2966023d8c6271a",
+   "hbta_as_dev.csv": "73f03155afd878a7e3869ae8c80c7399",
+   "sensor_info.csv": "2e31ff0b6970696b397253ce991c8f32"
+  }
+ },
+ "thresholds": {
+  "deg": {
+   "recomputed": 2.679559733620663,
+   "fixed": 2.6795597336,
+   "n": 204
+  },
+  "raw": {
+   "recomputed": 2.060578187078884,
+   "fixed": 2.0605781871,
+   "n": 204
+  }
+ },
+ "main": {
+  "verdict": "실패: Truss는 공개 데이터 기준으로 '기준 대비 이상 여부'를 출력할 수 없음",
+  "conditions": {
+   "1_false_alarm": {
+    "n": 22,
+    "anomaly": 0,
+    "rate": 0.0,
+    "undecided": 6,
+    "limit": 0.05,
+    "pass": true,
+    "provisional": false
+   },
+   "2_danger_detection": {
+    "n": 46,
+    "anomaly": 0,
+    "rate": 0.0,
+    "undecided": 12,
+    "min": 0.95,
+    "pass": false,
+    "by_stage": {
+     "DS2": {
+      "n": 23,
+      "anomaly": 0,
+      "rate": 0.0,
+      "undecided": 6
+     },
+     "DS8": {
+      "n": 23,
+      "anomaly": 0,
+      "rate": 0.0,
+      "undecided": 6
+     }
+    }
+   }
+  },
+  "per_record": {
+   "MVS_P2_UDS_SM_Z_02": {
+    "stage": "UDS",
+    "alignment": {
+     "best_lag": 0,
+     "median_abs_log_diff_by_lag": {
+      "-3": 0.3506917336466753,
+      "-2": 0.23320338901552384,
+      "-1": 0.11530064976477616,
+      "0": 0.002157075059363578,
+      "1": 0.12004412315328228,
+      "2": 0.23786426690183182,
+      "3": 0.3552321131564131
+     },
+     "misaligned": false
+    },
+    "deg": {
+     "n": 22,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 6
+    },
+    "held": 30,
+    "n_windows": 60,
+    "d_median": 0.19008968464210013,
+    "raw": {
+     "n": 22,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 6
+    }
+   },
+   "MVS_P2_DS1_SM_Z_01": {
+    "stage": "DS1",
+    "alignment": {
+     "best_lag": 0,
+     "median_abs_log_diff_by_lag": {
+      "-3": 0.35320695897897725,
+      "-2": 0.23570514796190367,
+      "-1": 0.11782159284634064,
+      "0": 4.743945540397476e-05,
+      "1": 0.11755290942436192,
+      "2": 0.23550958756615614,
+      "3": 0.3530621644144185
+     },
+     "misaligned": false
+    },
+    "deg": {
+     "n": 23,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 6
+    },
+    "held": 29,
+    "n_windows": 60,
+    "d_median": 0.19032522291083742,
+    "raw": {
+     "n": 23,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 6
+    }
+   },
+   "MVS_P2_DS2_SM_Z_01": {
+    "stage": "DS2",
+    "alignment": {
+     "best_lag": 0,
+     "median_abs_log_diff_by_lag": {
+      "-3": 0.353212403208949,
+      "-2": 0.23611100956315045,
+      "-1": 0.11820953985172933,
+      "0": 0.00041194645278741504,
+      "1": 0.11719597119741598,
+      "2": 0.23510893315860626,
+      "3": 0.3526531304245948
+     },
+     "misaligned": false
+    },
+    "deg": {
+     "n": 23,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 6
+    },
+    "held": 30,
+    "n_windows": 60,
+    "d_median": 0.19516303793550685,
+    "raw": {
+     "n": 23,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 6
+    }
+   },
+   "MVS_P2_DS3_SM_Z_01": {
+    "stage": "DS3",
+    "alignment": {
+     "best_lag": 0,
+     "median_abs_log_diff_by_lag": {
+      "-3": 0.34614966150779214,
+      "-2": 0.2293167446877289,
+      "-1": 0.11141596628704553,
+      "0": 0.00587754562440157,
+      "1": 0.1234462933787921,
+      "2": 0.24144402565837653,
+      "3": 0.35897373398251653
+     },
+     "misaligned": false
+    },
+    "deg": {
+     "n": 23,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 6
+    },
+    "held": 31,
+    "n_windows": 61,
+    "d_median": 0.1894670575079681,
+    "raw": {
+     "n": 23,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 6
+    }
+   },
+   "MVS_P2_DS4_SM_Z_01": {
+    "stage": "DS4",
+    "alignment": {
+     "best_lag": 0,
+     "median_abs_log_diff_by_lag": {
+      "-3": 0.35019680663830477,
+      "-2": 0.232782340333753,
+      "-1": 0.11491523902502498,
+      "0": 0.002529245736554442,
+      "1": 0.12042077099200998,
+      "2": 0.23824091474055953,
+      "3": 0.35566259099345277
+     },
+     "misaligned": false
+    },
+    "deg": {
+     "n": 23,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 6
+    },
+    "held": 30,
+    "n_windows": 60,
+    "d_median": 0.18295421243572205,
+    "raw": {
+     "n": 23,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 6
+    }
+   },
+   "MVS_P2_DS5_SM_Z_01": {
+    "stage": "DS5",
+    "alignment": {
+     "best_lag": 0,
+     "median_abs_log_diff_by_lag": {
+      "-3": 0.35312237092276044,
+      "-2": 0.23555428426696579,
+      "-1": 0.11763075680305368,
+      "0": 0.0,
+      "1": 0.11766121071866831,
+      "2": 0.23567657429109934,
+      "3": 0.35312237092276044
+     },
+     "misaligned": false
+    },
+    "deg": {
+     "n": 23,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 6
+    },
+    "held": 30,
+    "n_windows": 60,
+    "d_median": 0.15363688312140913,
+    "raw": {
+     "n": 23,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 6
+    }
+   },
+   "MVS_P2_DS6_SM_Z_01": {
+    "stage": "DS6",
+    "alignment": {
+     "best_lag": 0,
+     "median_abs_log_diff_by_lag": {
+      "-3": 0.34725239791330975,
+      "-2": 0.22996890066068287,
+      "-1": 0.11249666159255423,
+      "0": 0.005093471201145228,
+      "1": 0.12274172657725213,
+      "2": 0.24068218733217672,
+      "3": 0.35853926508022926
+     },
+     "misaligned": false
+    },
+    "deg": {
+     "n": 22,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 6
+    },
+    "held": 30,
+    "n_windows": 60,
+    "d_median": 0.19352982942813307,
+    "raw": {
+     "n": 22,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 6
+    }
+   },
+   "MVS_P2_DS7_SM_Z_01": {
+    "stage": "DS7",
+    "alignment": {
+     "best_lag": 0,
+     "median_abs_log_diff_by_lag": {
+      "-3": 0.3666762030979327,
+      "-2": 0.24977175566841936,
+      "-1": 0.13133306437959336,
+      "0": 0.013678245947760459,
+      "1": 0.10409634914740407,
+      "2": 0.22193714203863935,
+      "3": 0.33955487983744925
+     },
+     "misaligned": false
+    },
+    "deg": {
+     "n": 20,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 8
+    },
+    "held": 33,
+    "n_windows": 61,
+    "d_median": 0.20813185100008919,
+    "raw": {
+     "n": 20,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 8
+    }
+   },
+   "MVS_P2_DS8_SM_Z_01": {
+    "stage": "DS8",
+    "alignment": {
+     "best_lag": 0,
+     "median_abs_log_diff_by_lag": {
+      "-3": 0.37149675839632046,
+      "-2": 0.2539360365890386,
+      "-1": 0.13664533057847894,
+      "0": 0.01872749331597201,
+      "1": 0.09874787136624597,
+      "2": 0.21653632538522039,
+      "3": 0.33463050296015173
+     },
+     "misaligned": false
+    },
+    "deg": {
+     "n": 23,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 6
+    },
+    "held": 32,
+    "n_windows": 61,
+    "d_median": 0.28429803879739807,
+    "raw": {
+     "n": 23,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 6
+    }
+   }
+  },
+  "separability": {
+   "auc_deg_z": 0.5972906403940886,
+   "oracle_threshold_p95_of_02": 0.35142485462874623,
+   "oracle_detection": 0.2413793103448276,
+   "note": "확인용 정상 데이터로 정한 상한값. 성능 주장에 쓰지 않음"
+  },
+  "cause_analysis": {
+   "raw_z": {
+    "false_alarm": {
+     "n": 22,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 6
+    },
+    "danger": {
+     "n": 46,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 12
+    },
+    "pass": false
+   },
+   "raw_yz_auc": 0.46736453201970446,
+   "cause": "하루치 정상 기준 또는 데이터 한계 (원본 y+z AUC < 0.99)"
+  },
+  "grade_description": {
+   "stage_median_d": {
+    "DS3": 0.1894670575079681,
+    "DS5": 0.15363688312140913,
+    "DS6": 0.19352982942813307,
+    "DS1": 0.19032522291083742,
+    "DS4": 0.18295421243572205,
+    "DS7": 0.20813185100008919,
+    "DS2": 0.19516303793550685,
+    "DS8": 0.28429803879739807,
+    "UDS (_02)": 0.19008968464210013
+   },
+   "expected_grade": {
+    "DS3": "주의",
+    "DS5": "주의",
+    "DS6": "주의",
+    "DS1": "경고",
+    "DS4": "경고",
+    "DS7": "경고",
+    "DS2": "위험",
+    "DS8": "위험"
+   },
+   "note": "서술만. 통과 판정 없음"
+  }
+ },
+ "side": {
+  "SM_P1_Y": {
+   "danger_detection": {
+    "n": 61,
+    "anomaly": 0,
+    "rate": 0.0,
+    "undecided": 14
+   },
+   "by_stage": {
+    "DS1": {
+     "n": 32,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 6
+    },
+    "DS2": {
+     "n": 32,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 6
+    },
+    "DS3": {
+     "n": 28,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 8
+    },
+    "DS4": {
+     "n": 28,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 8
+    },
+    "DS5": {
+     "n": 26,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 8
+    },
+    "DS6": {
+     "n": 32,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 6
+    },
+    "DS7": {
+     "n": 26,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 8
+    },
+    "DS8": {
+     "n": 29,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 8
+    }
+   },
+   "false_alarm_dev_seen": {
+    "n": 32,
+    "anomaly": 0,
+    "rate": 0.0,
+    "undecided": 6
+   },
+   "auc_deg_yz_reference": 0.4283598667160311,
+   "alignment": {
+    "MVS_P1_DS1_SM_Y_01": 0,
+    "MVS_P1_DS2_SM_Y_01": 0,
+    "MVS_P1_DS3_SM_Y_01": 0,
+    "MVS_P1_DS4_SM_Y_01": 0,
+    "MVS_P1_DS5_SM_Y_01": 0,
+    "MVS_P1_DS6_SM_Y_01": 0,
+    "MVS_P1_DS7_SM_Y_01": 0,
+    "MVS_P1_DS8_SM_Y_01": 0
+   }
+  },
+  "SM_P1_Z": {
+   "danger_detection": {
+    "n": 50,
+    "anomaly": 0,
+    "rate": 0.0,
+    "undecided": 8
+   },
+   "by_stage": {
+    "DS1": {
+     "n": 25,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 4
+    },
+    "DS2": {
+     "n": 25,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 4
+    },
+    "DS3": {
+     "n": 25,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 4
+    },
+    "DS4": {
+     "n": 24,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 4
+    },
+    "DS5": {
+     "n": 25,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 4
+    },
+    "DS6": {
+     "n": 25,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 4
+    },
+    "DS7": {
+     "n": 25,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 4
+    },
+    "DS8": {
+     "n": 25,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 4
+    }
+   },
+   "false_alarm_dev_seen": {
+    "n": 25,
+    "anomaly": 0,
+    "rate": 0.0,
+    "undecided": 4
+   },
+   "auc_deg_yz_reference": 0.6321321321321322,
+   "alignment": {
+    "MVS_P1_DS1_SM_Z_01": 0,
+    "MVS_P1_DS2_SM_Z_01": 0,
+    "MVS_P1_DS3_SM_Z_01": 0,
+    "MVS_P1_DS4_SM_Z_01": 0,
+    "MVS_P1_DS5_SM_Z_01": 0,
+    "MVS_P1_DS6_SM_Z_01": 0,
+    "MVS_P1_DS7_SM_Z_01": 0,
+    "MVS_P1_DS8_SM_Z_01": 0
+   }
+  },
+  "SM_P2_Y": {
+   "danger_detection": {
+    "n": 54,
+    "anomaly": 0,
+    "rate": 0.0,
+    "undecided": 16
+   },
+   "by_stage": {
+    "DS1": {
+     "n": 19,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 10
+    },
+    "DS2": {
+     "n": 27,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 8
+    },
+    "DS3": {
+     "n": 27,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 8
+    },
+    "DS4": {
+     "n": 28,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 8
+    },
+    "DS5": {
+     "n": 27,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 8
+    },
+    "DS6": {
+     "n": 26,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 8
+    },
+    "DS7": {
+     "n": 26,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 8
+    },
+    "DS8": {
+     "n": 27,
+     "anomaly": 0,
+     "rate": 0.0,
+     "undecided": 8
+    }
+   },
+   "false_alarm_dev_seen": {
+    "n": 27,
+    "anomaly": 0,
+    "rate": 0.0,
+    "undecided": 8
+   },
+   "auc_deg_yz_reference": 0.549127640036731,
+   "alignment": {
+    "MVS_P2_DS1_SM_Y_01": 2,
+    "MVS_P2_DS2_SM_Y_01": 0,
+    "MVS_P2_DS3_SM_Y_01": 0,
+    "MVS_P2_DS4_SM_Y_01": 0,
+    "MVS_P2_DS5_SM_Y_01": 0,
+    "MVS_P2_DS6_SM_Y_01": 0,
+    "MVS_P2_DS7_SM_Y_01": 0,
+    "MVS_P2_DS8_SM_Y_01": 0
+   }
+  }
+ },
+ "ai1_v1_reference": {
+  "MVS_P1_DS1_SM_Y_01": {
+   "anomaly_rate": 0.9736842105263158,
+   "n_decided": 38
+  },
+  "MVS_P1_DS1_SM_Z_01": {
+   "anomaly_rate": 0.9655172413793104,
+   "n_decided": 29
+  },
+  "MVS_P1_DS2_SM_Y_01": {
+   "anomaly_rate": 0.9736842105263158,
+   "n_decided": 38
+  },
+  "MVS_P1_DS2_SM_Z_01": {
+   "anomaly_rate": 0.9666666666666667,
+   "n_decided": 30
+  },
+  "MVS_P1_DS3_SM_Y_01": {
+   "anomaly_rate": 0.9722222222222222,
+   "n_decided": 36
+  },
+  "MVS_P1_DS3_SM_Z_01": {
+   "anomaly_rate": 0.9655172413793104,
+   "n_decided": 29
+  },
+  "MVS_P1_DS4_SM_Y_01": {
+   "anomaly_rate": 0.9722222222222222,
+   "n_decided": 36
+  },
+  "MVS_P1_DS4_SM_Z_01": {
+   "anomaly_rate": 0.9642857142857143,
+   "n_decided": 28
+  },
+  "MVS_P1_DS5_SM_Y_01": {
+   "anomaly_rate": 0.9705882352941176,
+   "n_decided": 34
+  },
+  "MVS_P1_DS5_SM_Z_01": {
+   "anomaly_rate": 0.9655172413793104,
+   "n_decided": 29
+  },
+  "MVS_P1_DS6_SM_Y_01": {
+   "anomaly_rate": 0.9743589743589743,
+   "n_decided": 39
+  },
+  "MVS_P1_DS6_SM_Z_01": {
+   "anomaly_rate": 0.9655172413793104,
+   "n_decided": 29
+  },
+  "MVS_P1_DS7_SM_Y_01": {
+   "anomaly_rate": 0.9705882352941176,
+   "n_decided": 34
+  },
+  "MVS_P1_DS7_SM_Z_01": {
+   "anomaly_rate": 0.9655172413793104,
+   "n_decided": 29
+  },
+  "MVS_P1_DS8_SM_Y_01": {
+   "anomaly_rate": 0.9736842105263158,
+   "n_decided": 38
+  },
+  "MVS_P1_DS8_SM_Z_01": {
+   "anomaly_rate": 0.9655172413793104,
+   "n_decided": 29
+  },
+  "MVS_P2_DS1_SM_Y_01": {
+   "anomaly_rate": 0.9722222222222222,
+   "n_decided": 36
+  },
+  "MVS_P2_DS1_SM_Z_01": {
+   "anomaly_rate": 0.967741935483871,
+   "n_decided": 31
+  },
+  "MVS_P2_DS2_SM_Y_01": {
+   "anomaly_rate": 0.9722222222222222,
+   "n_decided": 36
+  },
+  "MVS_P2_DS2_SM_Z_01": {
+   "anomaly_rate": 0.9666666666666667,
+   "n_decided": 30
+  },
+  "MVS_P2_DS3_SM_Y_01": {
+   "anomaly_rate": 0.972972972972973,
+   "n_decided": 37
+  },
+  "MVS_P2_DS3_SM_Z_01": {
+   "anomaly_rate": 0.9666666666666667,
+   "n_decided": 30
+  },
+  "MVS_P2_DS4_SM_Y_01": {
+   "anomaly_rate": 0.975,
+   "n_decided": 40
+  },
+  "MVS_P2_DS4_SM_Z_01": {
+   "anomaly_rate": 0.9666666666666667,
+   "n_decided": 30
+  },
+  "MVS_P2_DS5_SM_Y_01": {
+   "anomaly_rate": 0.972972972972973,
+   "n_decided": 37
+  },
+  "MVS_P2_DS5_SM_Z_01": {
+   "anomaly_rate": 0.9666666666666667,
+   "n_decided": 30
+  },
+  "MVS_P2_DS6_SM_Y_01": {
+   "anomaly_rate": 0.9705882352941176,
+   "n_decided": 34
+  },
+  "MVS_P2_DS6_SM_Z_01": {
+   "anomaly_rate": 0.9666666666666667,
+   "n_decided": 30
+  },
+  "MVS_P2_DS7_SM_Y_01": {
+   "anomaly_rate": 0.9722222222222222,
+   "n_decided": 36
+  },
+  "MVS_P2_DS7_SM_Z_01": {
+   "anomaly_rate": 0.9642857142857143,
+   "n_decided": 28
+  },
+  "MVS_P2_DS8_SM_Y_01": {
+   "anomaly_rate": 0.9714285714285714,
+   "n_decided": 35
+  },
+  "MVS_P2_DS8_SM_Z_01": {
+   "anomaly_rate": 0.9655172413793104,
+   "n_decided": 29
+  },
+  "MVS_P2_UDS_SM_Z_01": {
+   "anomaly_rate": 0.9655172413793104,
+   "n_decided": 29
+  },
+  "MVS_P2_UDS_SM_Z_02": {
+   "anomaly_rate": 0.9666666666666667,
+   "n_decided": 30
+  }
+ }
+}
