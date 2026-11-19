@@ -23,6 +23,13 @@ Design (fixed before the first run, 2026-11-19):
             per-state detection; grade accuracy and per-state grade mix;
             top features by gain
 
+Runs (2026-11-19): each training run is identified by an input fingerprint
+(input file MD5s + features + params + evaluation design). A new fingerprint
+creates a new run <dataset>_<YYYYMMDD>_<fingerprint8>; the same fingerprint
+regenerates the existing run instead of piling up duplicates.
+  results/public_grade/xgb_performance/  <run>.csv, <run>_summary.json, xgb_performance_index.csv
+  data/processed/public_grade/xgb_runs/<run>/  dataset/, raw/, deg/, performance.csv, run_info.json
+
 Usage: python -m src.public_grade.xgb_sm_experiment
 """
 
@@ -59,9 +66,45 @@ PARAMS = dict(n_estimators=300, max_depth=3, learning_rate=0.05, subsample=0.8,
               tree_method="hist", random_state=SEED, n_jobs=4)
 
 
+DATASET_NAME = "hbta_sm"
+CHECK_DIR, DEV_DIR = Path("data/raw/ai1_public_1.2"), Path("data/raw/ai1_public_1.2_dev")
+INPUT_FILES = [CHECK_DIR / "hbta_anomaly_results_raw.csv", CHECK_DIR / "hbta_anomaly_results_deg.csv",
+               DEV_DIR / "hbta_anomaly_results_raw.csv", DEV_DIR / "hbta_anomaly_results_deg.csv"]
+EVAL_DESIGN = "leave-one-condition-out v1, held = degraded hold_main, p > 0.5"
+INDEX_NAME = "xgb_performance_index.csv"
+
+
+def input_fingerprint() -> tuple[str, dict]:
+    """Same input files + same features + same settings -> same fingerprint (no duplicate run)."""
+    import hashlib
+    digests = {str(p): tv.loader.file_digest(p) for p in INPUT_FILES}
+    blob = json.dumps({"inputs": digests, "features": FEATURES, "params": PARAMS, "design": EVAL_DESIGN},
+                      sort_keys=True, ensure_ascii=False)
+    return hashlib.md5(blob.encode()).hexdigest(), digests
+
+
+def resolve_run(index_path: Path, fingerprint: str, dataset: str, today: str) -> tuple[str, bool]:
+    """Reuse the run id when the fingerprint is already in the index, else create a new one."""
+    if index_path.exists():
+        index = pd.read_csv(index_path, encoding="utf-8-sig", dtype=str)
+        hit = index[index["입력 지문"] == fingerprint]
+        if not hit.empty:
+            return hit["학습 건"].iloc[0], False
+    return f"{dataset}_{today}_{fingerprint[:8]}", True
+
+
+def update_index(index_path: Path, row: dict) -> pd.DataFrame:
+    index = pd.read_csv(index_path, encoding="utf-8-sig", dtype=str) if index_path.exists() else pd.DataFrame()
+    if not index.empty:
+        index = index[index["학습 건"] != row["학습 건"]]
+    index = pd.concat([index, pd.DataFrame([row]).astype(str)], ignore_index=True).sort_values("학습 건")
+    index.to_csv(index_path, index=False, encoding="utf-8-sig")
+    return index
+
+
 def load_frames() -> dict:
-    check = tv.load(Path("data/raw/ai1_public_1.2"), "hbta_as.csv")
-    dev = tv.load(Path("data/raw/ai1_public_1.2_dev"), "hbta_as_dev.csv")
+    check = tv.load(CHECK_DIR, "hbta_as.csv")
+    dev = tv.load(DEV_DIR, "hbta_as_dev.csv")
     out = {}
     for kind in ("raw", "deg"):
         frame = pd.concat([getattr(check, kind), getattr(dev, kind)], ignore_index=True)
@@ -281,15 +324,24 @@ def performance_table(out: Path) -> pd.DataFrame:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--out-dir", type=Path, default=Path("data/processed/public_grade/xgb_sm"))
-    parser.add_argument("--summary", type=Path, default=Path("results/public_grade/xgb_sm_summary.json"))
+    parser.add_argument("--runs-dir", type=Path, default=Path("data/processed/public_grade/xgb_runs"),
+                        help="학습 건별 모델·예측·데이터셋 폴더 (git 제외)")
+    parser.add_argument("--perf-dir", type=Path, default=Path("results/public_grade/xgb_performance"),
+                        help="학습 건별 성능표와 학습 건 목록 (git 포함)")
+    parser.add_argument("--dataset-name", default=DATASET_NAME)
     args = parser.parse_args(argv)
+    from datetime import date
+    fingerprint, digests = input_fingerprint()
+    index_path = args.perf_dir / INDEX_NAME
+    run_id, is_new = resolve_run(index_path, fingerprint, args.dataset_name, date.today().strftime("%Y%m%d"))
+    print(f"학습 건: {run_id} ({'새 학습 건' if is_new else '같은 데이터·설정의 기존 학습 건을 다시 만듦 (쌓지 않음)'})")
     frames = load_frames()
-    names = feature_labels(sensor_labels(Path("data/raw/ai1_public_1.2"), "hbta"))
-    summary = {"note": "개발용 실험 (이미 본 데이터, 결과 열람 후). 성능 근거 아님. 모델은 개발용 폴더에만 저장, API 연결 없음",
+    names = feature_labels(sensor_labels(CHECK_DIR, "hbta"))
+    summary = {"run_id": run_id, "input_fingerprint": fingerprint, "inputs_md5": digests,
+               "note": "개발용 실험 (이미 본 데이터, 결과 열람 후). 성능 근거 아님. 모델은 개발용 폴더에만 저장, API 연결 없음",
                "design": __doc__.split("Design")[1].split("Usage")[0].strip(),
                "features": FEATURES, "params": PARAMS, "code_commit": tv.git_commit(), "models": {}}
-    out = args.out_dir
+    out = args.runs_dir / run_id
     out.mkdir(parents=True, exist_ok=True)
     write_json(out / "dataset" / "folds.json", {
         "note": "모델 폴더 heldout_<조건> = 그 조건을 빼고 학습, 그 조건으로 평가",
@@ -314,8 +366,25 @@ def main(argv=None) -> int:
         print(f"[{kind}] AUC 정상vs손상 {m['auc_normal_vs_damaged']:.3f}, 정상vs위험 {m['auc_normal_vs_danger']:.3f}, "
               f"오경보 {m['false_alarm']:.3f}, 위험 탐지 {m['detection_danger']:.3f}, "
               f"손상 전체 탐지 {m['detection_all_damage']:.3f}, 등급 정확도 {m['grade_accuracy']:.3f}")
-    write_json(args.summary, summary)
-    performance_table(out)
+    table = performance_table(out)
+    args.perf_dir.mkdir(parents=True, exist_ok=True)
+    table.to_csv(args.perf_dir / f"{run_id}.csv", index=False, encoding="utf-8-sig")
+    write_json(args.perf_dir / f"{run_id}_summary.json", summary)
+    write_json(out / "run_info.json", {k: summary[k] for k in ("run_id", "input_fingerprint", "inputs_md5",
+                                                               "note", "params", "code_commit")})
+    mean = {k: summary["models"][k]["mean"] for k in ("raw", "deg")}
+    index = update_index(index_path, {
+        "학습 건": run_id, "학습일": run_id.split("_")[-2], "데이터셋": args.dataset_name,
+        "입력 지문": fingerprint, "Window 수": summary["models"]["deg"]["n_windows"], "모델 수": len(table) - 4,
+        "평가 방식": "조건 하나 빼기 (4개 조건)",
+        "원본 AUC": round(mean["raw"]["auc_normal_vs_damaged"], 3), "열화본 AUC": round(mean["deg"]["auc_normal_vs_damaged"], 3),
+        "원본 오경보율": round(mean["raw"]["false_alarm"], 3), "열화본 오경보율": round(mean["deg"]["false_alarm"], 3),
+        "원본 위험 탐지율": round(mean["raw"]["detection_danger"], 3), "열화본 위험 탐지율": round(mean["deg"]["detection_danger"], 3),
+        "원본 등급 정확도": round(mean["raw"]["grade_accuracy"], 3), "열화본 등급 정확도": round(mean["deg"]["grade_accuracy"], 3),
+        "성능표": f"{run_id}.csv", "모델 폴더": str(out), "코드 커밋": (summary["code_commit"] or "")[:7],
+        "상태": "개발용 실험 (이미 본 데이터, 배포 금지)",
+    })
+    print(f"성능표: {args.perf_dir / (run_id + '.csv')}  |  학습 건 목록: {index_path} ({len(index)}건)")
     return 0
 
 
