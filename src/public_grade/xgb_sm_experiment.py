@@ -34,9 +34,10 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from xgboost import XGBClassifier
+from xgboost import DMatrix, XGBClassifier
 
 from src.public_grade import truss_v2 as tv
+from src.public_grade.grade_v3 import AXIS, sensor_labels
 
 SEED = 20261109
 CONDITIONS = ("SM_P1_Y", "SM_P1_Z", "SM_P2_Y", "SM_P2_Z")
@@ -81,13 +82,70 @@ def auc(neg, pos) -> float | None:
     return float((b[:, None] > a[None, :]).mean() + 0.5 * (b[:, None] == a[None, :]).mean())
 
 
+STAT_NAME = {"mean": "평균", "rms": "RMS", "std": "표준편차", "max": "최댓값", "min": "최솟값",
+             "p2p": "최대-최소 폭", "crest": "파고율", "dom_freq": "주된 진동수(Hz)",
+             "band_2_8": "2–8Hz 에너지 비율", "band_8_15": "8–15Hz 에너지 비율", "band_15_25": "15–25Hz 에너지 비율"}
+TOP_N = 3
+
+
+def feature_labels(labels: dict) -> dict:
+    """Readable name with sensor and location for every model input."""
+    out = {}
+    for f in FEATURES:
+        parts = f.split("_")
+        if f == "window_start_s":
+            out[f] = "스윕 진행 시각(초, 가진 주파수 위치)"
+        elif f == "cross_amp_ratio_L4_L2_z":
+            out[f] = f"{labels['acc01']}/{labels['acc02']} 수직 진폭비"
+        elif f == "cross_torsion_y_z_L2":
+            out[f] = f"{labels['acc02']} 횡방향/수직 비(비틀림)"
+        elif parts[1].startswith("ar"):
+            out[f] = f"{labels[parts[0]]} {AXIS[parts[2]]} AR 계수 {parts[1][2:]}"
+        else:
+            stat = "_".join(parts[1:-1])
+            out[f] = f"{labels[parts[0]]} {AXIS[parts[-1]]} {STAT_NAME[stat]}"
+    return out
+
+
+def _contrib_text(names, values, contribs, idx) -> str:
+    return ", ".join(f"{names[i]} {values[i]:.3g} (영향 {contribs[i]:+.2f})" if np.isfinite(values[i])
+                     else f"{names[i]} 값 없음 (영향 {contribs[i]:+.2f})" for i in idx)
+
+
+def binary_reason(p: float, values: np.ndarray, contribs: np.ndarray, names: list) -> str:
+    """판정 사유: probability vs 0.5 and the features that pushed most toward each side.
+    contribs are SHAP values in log-odds (positive = toward 손상)."""
+    decision = "손상" if p > 0.5 else "정상"
+    head = f"손상 확률 {p:.2f} (기준 0.5 {'초과' if p > 0.5 else '이하'} → {decision})"
+    order = np.argsort(contribs)
+    toward_damage = [i for i in order[::-1] if contribs[i] > 0][:TOP_N]
+    toward_normal = [i for i in order if contribs[i] < 0][:TOP_N]
+    first, second = (toward_damage, toward_normal) if decision == "손상" else (toward_normal, toward_damage)
+    first_name, second_name = ("손상", "정상") if decision == "손상" else ("정상", "손상")
+    text = head
+    if first:
+        text += f" / {first_name} 쪽 근거: " + _contrib_text(names, values, contribs, first)
+    if second:
+        text += f" / 반대({second_name}) 쪽 근거: " + _contrib_text(names, values, contribs, second[:1])
+    return text
+
+
+def grade_reason(grade: str, prob: float, values: np.ndarray, contribs: np.ndarray, names: list) -> str:
+    idx = [i for i in np.argsort(contribs)[::-1] if contribs[i] > 0][:TOP_N]
+    text = f"예측 등급 {grade} (확률 {prob:.2f})"
+    if idx:
+        text += f" / {grade} 쪽 근거: " + _contrib_text(names, values, contribs, idx)
+    return text
+
+
 def balanced_weights(y: pd.Series) -> np.ndarray:
     counts = y.value_counts()
     return y.map(lambda v: len(y) / (len(counts) * counts[v])).to_numpy(float)
 
 
-def run_kind(frame: pd.DataFrame) -> tuple[list, pd.DataFrame, pd.Series]:
+def run_kind(frame: pd.DataFrame, names: dict) -> tuple[list, pd.DataFrame, pd.Series]:
     X = frame[FEATURES].apply(pd.to_numeric, errors="coerce")
+    name_list = [names[f] for f in FEATURES]
     folds, preds, gains = [], [], []
     for held in CONDITIONS:
         test = frame["condition"] == held
@@ -99,10 +157,21 @@ def run_kind(frame: pd.DataFrame) -> tuple[list, pd.DataFrame, pd.Series]:
         codes = frame["grade"].map({g: i for i, g in enumerate(GRADES)})
         multi = XGBClassifier(objective="multi:softprob", num_class=4, **PARAMS)
         multi.fit(X[train], codes[train], sample_weight=balanced_weights(codes[train]))
-        grade_pred = np.array(GRADES)[multi.predict_proba(X[test]).argmax(axis=1)]
+        grade_prob = multi.predict_proba(X[test])
+        grade_idx = grade_prob.argmax(axis=1)
+        grade_pred = np.array(GRADES)[grade_idx]
+
+        # SHAP contributions (TreeSHAP built into XGBoost), last column = bias
+        dm = DMatrix(X[test])
+        c_bin = binary.get_booster().predict(dm, pred_contribs=True)[:, :-1]
+        c_multi = multi.get_booster().predict(dm, pred_contribs=True)[:, :, :-1]
+        xv = X[test].to_numpy(float)
 
         part = frame.loc[test, ["condition", "source_record", "damage_stage", "grade", "window_start_s"]].copy()
         part["p_damaged"], part["pred_damaged"], part["pred_grade"] = p, (p > 0.5).astype(int), grade_pred
+        part["reason"] = [binary_reason(p[i], xv[i], c_bin[i], name_list) for i in range(len(part))]
+        part["grade_reason"] = [grade_reason(grade_pred[i], grade_prob[i, grade_idx[i]], xv[i],
+                                             c_multi[i, grade_idx[i]], name_list) for i in range(len(part))]
         preds.append(part)
         gains.append(pd.Series(binary.get_booster().get_score(importance_type="gain")))
 
@@ -130,12 +199,13 @@ def main(argv=None) -> int:
     parser.add_argument("--summary", type=Path, default=Path("results/public_grade/xgb_sm_summary.json"))
     args = parser.parse_args(argv)
     frames = load_frames()
+    names = feature_labels(sensor_labels(Path("data/raw/ai1_public_1.2"), "hbta"))
     summary = {"note": "개발용 실험 (이미 본 데이터, 결과 열람 후). 성능 근거 아님. 모델 저장·API 연결 없음",
                "design": __doc__.split("Design")[1].split("Usage")[0].strip(),
                "features": FEATURES, "params": PARAMS, "code_commit": tv.git_commit(), "models": {}}
     args.out_dir.mkdir(parents=True, exist_ok=True)
     for kind, frame in frames.items():
-        folds, preds, gain = run_kind(frame)
+        folds, preds, gain = run_kind(frame, names)
         preds.to_csv(args.out_dir / f"xgb_sm_{kind}_predictions.csv", index=False, encoding="utf-8-sig")
         mix = pd.crosstab(preds["damage_stage"], preds["pred_grade"], normalize="index").reindex(columns=GRADES).fillna(0)
         summary["models"][kind] = {
@@ -144,7 +214,7 @@ def main(argv=None) -> int:
                      ("auc_normal_vs_damaged", "auc_normal_vs_danger", "false_alarm",
                       "detection_danger", "detection_all_damage", "grade_accuracy")},
             "grade_mix_by_state": mix.round(3).to_dict(orient="index"),
-            "top_features_gain": gain.head(15).round(2).to_dict(),
+            "top_features_gain": {f"{k} ({names[k]})": v for k, v in gain.head(15).round(2).items()},
         }
         m = summary["models"][kind]["mean"]
         print(f"[{kind}] AUC 정상vs손상 {m['auc_normal_vs_damaged']:.3f}, 정상vs위험 {m['auc_normal_vs_danger']:.3f}, "
