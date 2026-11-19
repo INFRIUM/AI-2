@@ -106,13 +106,63 @@ def grade_single(levels: pd.DataFrame) -> pd.Series:
     return out
 
 
-def evidence(levels: pd.DataFrame, names: dict) -> pd.Series:
-    parts = []
-    for col in levels.columns:
-        tag = levels[col].map({1.0: "p95 초과", 2.0: "정상 최댓값 초과"})
-        parts.append(names[col] + " " + tag)
-    joined = pd.concat(parts, axis=1)
-    return joined.apply(lambda r: ", ".join(x for x in r if isinstance(x, str)), axis=1)
+def recent_counts(window_level: pd.Series, times: pd.Series, groups: pd.Series, step: float) -> pd.DataFrame:
+    """For the last 3 consecutive windows: how many are above p95 (n_low) and above
+    the normal max (n_high). NaN when the two previous windows are not available."""
+    out = pd.DataFrame(np.nan, index=window_level.index, columns=["n_low", "n_high"])
+    frame = pd.DataFrame({"lv": window_level, "t": times, "grp": groups})
+    for _, part in frame.groupby("grp", sort=False):
+        part = part.sort_values("t")
+        t, lv, idx = part["t"].to_numpy(float), part["lv"].to_numpy(float), part.index
+        for i in range(2, len(part)):
+            span, vals = t[i - 2:i + 1], lv[i - 2:i + 1]
+            if np.all(np.abs(np.diff(span) - step) < 1e-3 * step) and not np.isnan(vals).any():
+                out.loc[idx[i]] = [float((vals >= 1).sum()), float((vals >= 2).sum())]
+    return out
+
+
+def _num(x: float) -> str:
+    return f"{x:.3g}"
+
+
+def indicator_text(name: str, value, lv, b: Bounds) -> str:
+    """One indicator with its value and the boundary numbers it was compared with."""
+    if lv is None or (isinstance(lv, float) and np.isnan(lv)):
+        return f"{name} 값 없음"
+    v = _num(float(value))
+    if lv >= 2:
+        return f"{name} {v}: 위험 경계 {_num(b.high)} 초과"
+    if lv >= 1:
+        return f"{name} {v}: 정상 상한 {_num(b.low)} 초과 (위험 경계 {_num(b.high)} 이하)"
+    return f"{name} {v} (정상 상한 {_num(b.low)} 이하)"
+
+
+def reason(grade: str, values: dict, levels: dict, names: dict, bounds_: dict,
+           counts: dict | None, sequential: bool) -> str:
+    """판정 사유: which indicator, its value, the boundary numbers, and the persistence rule."""
+    if grade == HELD:
+        return "판정 보류: AI① 보류 표시 (진동이 센서 잡음 수준이거나 센서 값 없음)"
+    if grade == UNDECIDED:
+        return "판정 불가: 지표 값 없음"
+    texts = {c: indicator_text(names[c], values[c], levels[c], bounds_[c]) for c in names}
+    over = [texts[c] for c in names if not np.isnan(levels[c]) and levels[c] >= 1]
+    if grade == "정상" and not over:
+        return "모든 지표 정상 범위: " + ", ".join(texts.values())
+    head = " / ".join(over) if over else "이번 Window는 모든 지표 정상 범위"
+    if not sequential:
+        n_low = sum(1 for c in names if not np.isnan(levels[c]) and levels[c] >= 1)
+        n_high = sum(1 for c in names if not np.isnan(levels[c]) and levels[c] >= 2)
+        return (f"{head} / 지표 일치: 정상 상한 초과 {n_low}개, 위험 경계 초과 {n_high}개 "
+                f"(경고: 위험 경계 1개 또는 상한 2개 이상, 위험: 위험 경계 2개)")
+    if counts is None or np.isnan(counts["n_low"]):
+        tail = "앞 Window 2개가 없어 지속 여부를 판단할 수 없음"
+    elif grade == "위험":
+        tail = f"최근 3개 Window 중 {int(counts['n_high'])}개가 위험 경계 초과 (위험 조건: 2개 이상)"
+    elif grade == "경고":
+        tail = f"최근 3개 Window 중 {int(counts['n_low'])}개가 정상 상한 초과 (경고 조건: 2개 이상)"
+    else:
+        tail = f"지속 아님: 최근 3개 Window 중 {int(counts['n_low'])}개만 정상 상한 초과"
+    return f"{head} / {tail}"
 
 
 # ------------------------------------------------------------------ datasets
@@ -128,16 +178,20 @@ class Result:
     notes: list = field(default_factory=list)
 
 
-def _finish(frame, levels, names, held, role, sequential, step=None, group_col="source_record"):
+def _finish(frame, levels, names, held, role, sequential, bounds_, step=None, group_col="source_record"):
     out = frame[["experiment_id", "window_start_us", "source_record", "damage_stage",
                  "label_status", "ai1_split"]].copy()
     for col in levels.columns:
         out[f"value_{col}"] = frame[col] if col in frame else np.nan
         out[f"level_{col}"] = levels[col]
+        out[f"bound_normal_{col}"] = bounds_[col].low
+        out[f"bound_danger_{col}"] = bounds_[col].high
     e = levels.max(axis=1, skipna=True)
+    counts = None
     if sequential:
         times = pd.to_numeric(frame["window_start_us"]) / 1e6
         s = sustained(e, times, frame[group_col], step)
+        counts = recent_counts(e, times, frame[group_col], step)
         grade = grade_sequential(e, s)
         out["window_level"], out["sustained_level"] = e, s
     else:
@@ -145,7 +199,12 @@ def _finish(frame, levels, names, held, role, sequential, step=None, group_col="
         out["window_level"], out["sustained_level"] = e, np.nan
     grade[held.to_numpy()] = HELD
     out["grade"] = grade
-    out["evidence"] = evidence(levels, names).where(~held.to_numpy(), "")
+    values = frame.reindex(columns=list(levels.columns))
+    out["reason"] = [
+        reason(gr, values.loc[i].to_dict(), levels.loc[i].to_dict(), names, bounds_,
+               None if counts is None else counts.loc[i].to_dict(), sequential)
+        for i, gr in zip(frame.index, grade.to_numpy())
+    ]
     out["role"] = role
     out["status"] = STATUS
     return out
@@ -166,7 +225,7 @@ def box(kind: str) -> Result:
         levels[col] = lv
     held = levels.isna().all(axis=1)
     role = np.where(normal, "정상 기준", "판정")
-    w = _finish(f, levels, names, held, role, sequential=True, step=30.0)
+    w = _finish(f, levels, names, held, role, sequential=True, bounds_=b, step=30.0)
     return Result("ponte_moesa", "Box", kind, w, {k: vars(v) for k, v in b.items()},
                   "DS2 train·val·ai2_calib·session (11/26 저녁, 11/27 낮 포함), 보류 제외",
                   ["Window 60초, 30초 이동", "AR 계수가 전달 파일에 없어 1-TAC 두 쌍만 사용"])
@@ -187,7 +246,7 @@ def hbta_nm(kind: str) -> Result:
     levels[held.to_numpy()] = np.nan
     role = np.where(f["ai1_split"].eq("train") & f["damage_stage"].eq("UDS"), "기준 적합",
                     np.where(normal, "정상 기준", "판정"))
-    w = _finish(f, levels, names, held, role, sequential=True, step=tv.WINDOW_S)
+    w = _finish(f, levels, names, held, role, sequential=True, bounds_=b, step=tv.WINDOW_S)
     return Result("hbta_nm", "Truss", kind, w, {k: vars(v) for k, v in b.items()},
                   "UDS 두 날짜(9/22, 9/27) val·ai2_calib. AR 평균·공분산은 AI① train",
                   ["노이즈 가진(NM) 10개 측정", "1-TAC는 Window 3개가 같은 값을 공유"])
@@ -222,7 +281,7 @@ def hbta_sm(kind: str) -> Result:
     held = f["held"].astype(bool)
     is_dev = f["source_record"].isin([r for pair in tv.DEV_RECORDS.values() for r in pair])
     role = np.where(is_dev, "판정 (기준값 산출에 쓴 개발용 정상)", "판정")
-    w = _finish(f, levels, names, held, role, sequential=True, step=tv.WINDOW_S)
+    w = _finish(f, levels, names, held, role, sequential=True, bounds_={"sm_d": b}, step=tv.WINDOW_S)
     w["baseline"] = f["baseline"].to_numpy()
     w["condition"] = f["condition"].to_numpy()
     return Result("hbta_sm", "Truss", kind, w, {"sm_d": vars(b)},
@@ -250,7 +309,7 @@ def old_ada(kind: str) -> Result:
     held = f["held_main"].copy()
     levels[held.to_numpy()] = np.nan
     role = np.where(normal, "정상 기준", "판정")
-    w = _finish(f, levels, names, held, role, sequential=False)
+    w = _finish(f, levels, names, held, role, sequential=False, bounds_=b)
     w["speed_kmh"] = f["speed_kmh"].to_numpy()
     return Result("old_ada", "점검용", kind, w, {k: vars(v) for k, v in b.items()},
                   "INT 40km/h train 4회(한 회씩 빼고 거리 계산)·ai2_calib 3회",

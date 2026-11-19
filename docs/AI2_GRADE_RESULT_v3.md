@@ -13,7 +13,7 @@
 | HBTA SM | Truss | 2,168 | 1,104 / 39 / 12 / 0 / 980 / 33 |
 | Old ADA | 점검용 | 68 | 12 / 12 / 43 / 1 / 0 / 0 |
 
-- Window별 등급, 근거, 지표 값: `data/processed/public_grade/grade_v3/<데이터셋>_<deg|raw>_grades.csv` (git 제외)
+- Window별 등급, 판정 사유(지표 값과 경계 숫자), 지표 값: `data/processed/public_grade/grade_v3/<데이터셋>_<deg|raw>_grades.csv` (git 제외)
 - 경계, 상태별 비율: `results/public_grade/grade_v3_summary.json`
 - HBTA SM의 판정 보류가 많은 것은 스윕이 25Hz를 넘거나 가진 전후라 진동이 잡음 수준인 구간 때문이다.
 
