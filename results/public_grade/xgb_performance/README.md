@@ -16,4 +16,4 @@
 
 모델 파일, Window별 예측, 학습 데이터셋은 `data/processed/public_grade/xgb_runs/<학습 건>/`에 있다 (git 제외).
 
-실행: `.venv/bin/python -m src.public_grade.xgb_sm_experiment` (현재는 HBTA 스윕 가진 전용. 새 데이터셋은 불러오는 부분을 추가해야 한다)
+실행: HBTA 스윕 가진 `.venv/bin/python -m src.public_grade.xgb_sm_experiment`, HBTA 노이즈 가진 `.venv/bin/python -m src.public_grade.xgb_nm_experiment`. 공통 엔진은 `src/public_grade/xgb_engine.py`이고, 새 데이터셋은 불러오기와 평가 나누기 설정(Spec)만 추가하면 같은 구조로 쌓인다

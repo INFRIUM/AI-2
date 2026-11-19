@@ -1,5 +1,6 @@
 {
  "run_id": "hbta_sm_20261119_41906402",
+ "dataset": "hbta_sm",
  "input_fingerprint": "41906402d0e8045f2324490feb9396b0",
  "inputs_md5": {
   "data/raw/ai1_public_1.2/hbta_anomaly_results_raw.csv": "77e065310deec93757ee324d14b5e1d0",
@@ -8,7 +9,7 @@
   "data/raw/ai1_public_1.2_dev/hbta_anomaly_results_deg.csv": "732fa28813512304e90b8a43ec4f8c08"
  },
  "note": "개발용 실험 (이미 본 데이터, 결과 열람 후). 성능 근거 아님. 모델은 개발용 폴더에만 저장, API 연결 없음",
- "design": "(fixed before the first run, 2026-11-19):\n  data      HBTA SM: AI1-public-1.2 (34 recordings) + 1.2-dev (6 normal)\n            4 conditions (P1 Y, P1 Z, P2 Y, P2 Z) x (2 normal + DS1-DS8)\n  windows   degraded hold_main = False (same windows for raw and deg models)\n  features  window-intrinsic AI① features only (FEATURES below); no 1-TAC,\n            no AI① v2 features (they depend on AI① NM references), no AI①\n            results, no labels / dates / temperature / train passing\n  models    two separate XGBoost models: raw features, degraded features\n  tasks     binary: normal (UDS) vs damaged (DS1-DS8)\n            grade : 정상 / 주의 / 경고 / 위험 by the v1 mapping\n  split     leave one condition out (4 folds): train on 3 conditions,\n            evaluate on the held-out condition (recordings never seen in training)\n  params    fixed, no tuning (PARAMS), class weights balanced per fold\n  metrics   AUC (normal vs damaged, normal vs danger DS2+DS8), at p > 0.5:\n            false alarm on normal windows, detection on danger and all damage,\n            per-state detection; grade accuracy and per-state grade mix;\n            top features by gain\n\nRuns (2026-11-19): each training run is identified by an input fingerprint\n(input file MD5s + features + params + evaluation design). A new fingerprint\ncreates a new run <dataset>_<YYYYMMDD>_<fingerprint8>; the same fingerprint\nregenerates the existing run instead of piling up duplicates.\n  results/public_grade/xgb_performance/  <run>.csv, <run>_summary.json, xgb_performance_index.csv\n  data/processed/public_grade/xgb_runs/<run>/  dataset/, raw/, deg/, performance.csv, run_info.json",
+ "design": "(fixed before the first run, 2026-11-19):\n  data      HBTA SM: AI1-public-1.2 (34 recordings) + 1.2-dev (6 normal)\n            4 conditions (P1 Y, P1 Z, P2 Y, P2 Z) x (2 normal + DS1-DS8)\n  windows   degraded hold_main = False (same windows for raw and deg models)\n  features  window-intrinsic AI① features only (FEATURES below); no 1-TAC,\n            no AI① v2 features (they depend on AI① NM references), no AI①\n            results, no labels / dates / temperature / train passing\n  models    two separate XGBoost models: raw features, degraded features\n  tasks     binary: normal (UDS) vs damaged (DS1-DS8)\n            grade : 정상 / 주의 / 경고 / 위험 by the v1 mapping\n  split     leave one condition out (4 folds): train on 3 conditions,\n            evaluate on the held-out condition (recordings never seen in training)\n  params    fixed, no tuning (PARAMS), class weights balanced per fold\n  metrics   AUC (normal vs damaged, normal vs danger DS2+DS8), at p > 0.5:\n            false alarm on normal windows, detection on danger and all damage,\n            per-state detection; grade accuracy and per-state grade mix;\n            top features by gain",
  "features": [
   "acc01_mean_y",
   "acc01_rms_y",
@@ -90,7 +91,7 @@
   "random_state": 20261109,
   "n_jobs": 4
  },
- "code_commit": "7b697351148cd659d3c4ebb2dc061f1b2f13e673",
+ "code_commit": "749aaffbfe745d9eb5a01ea5b111e55817e780cd",
  "models": {
   "raw": {
    "n_windows": 1321,
