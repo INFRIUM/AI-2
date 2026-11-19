@@ -2,7 +2,7 @@
  "rule": "docs/AI2_GRADE_RULE_v3.md",
  "meaning": "이상의 확실성 (손상 심각도 아님)",
  "status": "이미 본 데이터로 판정, 검증 아님",
- "code_commit": "a2a588c7adc788cc19abe2c4cc6d080a6a22915d",
+ "code_commit": "a3f6b8b8b756a8fc7dd4a7b78c9f93f020916480",
  "datasets": {
   "ponte_moesa_deg": {
    "bridge": "Box",
