@@ -82,7 +82,7 @@
   "random_state": 20261109,
   "n_jobs": 4
  },
- "code_commit": "6d6cd9edbc3c8f7ddf9ea3d235bcc619b43bc5ad",
+ "code_commit": "c07a5ed27d5b4eb6d1900d291f3343eb43531363",
  "models": {
   "raw": {
    "n_windows": 1321,
@@ -253,21 +253,21 @@
     }
    },
    "top_features_gain": {
-    "acc01_p2p_z": 7.54,
-    "acc02_ar3_y": 7.52,
-    "acc01_std_y": 6.95,
-    "acc02_ar1_y": 6.91,
-    "acc01_ar5_z": 6.57,
-    "acc02_band_2_8_y": 6.56,
-    "acc02_dom_freq_y": 6.5,
-    "acc01_band_2_8_z": 6.45,
-    "acc01_ar2_z": 6.29,
-    "acc01_band_2_8_y": 6.29,
-    "acc01_mean_y": 6.27,
-    "acc01_min_y": 6.22,
-    "acc01_dom_freq_z": 6.22,
-    "acc01_max_z": 6.2,
-    "acc01_p2p_y": 6.2
+    "acc01_p2p_z (가속도계 acc01(L/4 부근) 수직 최대-최소 폭)": 7.54,
+    "acc02_ar3_y (가속도계 acc02(L/2) 횡방향 AR 계수 3)": 7.52,
+    "acc01_std_y (가속도계 acc01(L/4 부근) 횡방향 표준편차)": 6.95,
+    "acc02_ar1_y (가속도계 acc02(L/2) 횡방향 AR 계수 1)": 6.91,
+    "acc01_ar5_z (가속도계 acc01(L/4 부근) 수직 AR 계수 5)": 6.57,
+    "acc02_band_2_8_y (가속도계 acc02(L/2) 횡방향 2–8Hz 에너지 비율)": 6.56,
+    "acc02_dom_freq_y (가속도계 acc02(L/2) 횡방향 주된 진동수(Hz))": 6.5,
+    "acc01_band_2_8_z (가속도계 acc01(L/4 부근) 수직 2–8Hz 에너지 비율)": 6.45,
+    "acc01_ar2_z (가속도계 acc01(L/4 부근) 수직 AR 계수 2)": 6.29,
+    "acc01_band_2_8_y (가속도계 acc01(L/4 부근) 횡방향 2–8Hz 에너지 비율)": 6.29,
+    "acc01_mean_y (가속도계 acc01(L/4 부근) 횡방향 평균)": 6.27,
+    "acc01_min_y (가속도계 acc01(L/4 부근) 횡방향 최솟값)": 6.22,
+    "acc01_dom_freq_z (가속도계 acc01(L/4 부근) 수직 주된 진동수(Hz))": 6.22,
+    "acc01_max_z (가속도계 acc01(L/4 부근) 수직 최댓값)": 6.2,
+    "acc01_p2p_y (가속도계 acc01(L/4 부근) 횡방향 최대-최소 폭)": 6.2
    }
   },
   "deg": {
@@ -439,21 +439,21 @@
     }
    },
    "top_features_gain": {
-    "acc02_std_y": 10.01,
-    "acc02_std_z": 7.03,
-    "acc01_dom_freq_z": 6.69,
-    "acc02_ar2_y": 6.59,
-    "acc01_p2p_y": 6.53,
-    "acc01_ar2_z": 6.44,
-    "acc01_ar1_y": 6.4,
-    "acc02_dom_freq_z": 6.24,
-    "acc01_mean_y": 6.23,
-    "acc01_p2p_z": 6.18,
-    "acc01_max_y": 6.13,
-    "acc02_ar1_y": 6.13,
-    "acc02_ar2_z": 6.06,
-    "acc02_crest_z": 6.04,
-    "acc01_band_2_8_y": 6.03
+    "acc02_std_y (가속도계 acc02(L/2) 횡방향 표준편차)": 10.01,
+    "acc02_std_z (가속도계 acc02(L/2) 수직 표준편차)": 7.03,
+    "acc01_dom_freq_z (가속도계 acc01(L/4 부근) 수직 주된 진동수(Hz))": 6.69,
+    "acc02_ar2_y (가속도계 acc02(L/2) 횡방향 AR 계수 2)": 6.59,
+    "acc01_p2p_y (가속도계 acc01(L/4 부근) 횡방향 최대-최소 폭)": 6.53,
+    "acc01_ar2_z (가속도계 acc01(L/4 부근) 수직 AR 계수 2)": 6.44,
+    "acc01_ar1_y (가속도계 acc01(L/4 부근) 횡방향 AR 계수 1)": 6.4,
+    "acc02_dom_freq_z (가속도계 acc02(L/2) 수직 주된 진동수(Hz))": 6.24,
+    "acc01_mean_y (가속도계 acc01(L/4 부근) 횡방향 평균)": 6.23,
+    "acc01_p2p_z (가속도계 acc01(L/4 부근) 수직 최대-최소 폭)": 6.18,
+    "acc01_max_y (가속도계 acc01(L/4 부근) 횡방향 최댓값)": 6.13,
+    "acc02_ar1_y (가속도계 acc02(L/2) 횡방향 AR 계수 1)": 6.13,
+    "acc02_ar2_z (가속도계 acc02(L/2) 수직 AR 계수 2)": 6.06,
+    "acc02_crest_z (가속도계 acc02(L/2) 수직 파고율)": 6.04,
+    "acc01_band_2_8_y (가속도계 acc01(L/4 부근) 횡방향 2–8Hz 에너지 비율)": 6.03
    }
   }
  }
