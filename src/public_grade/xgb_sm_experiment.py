@@ -252,6 +252,33 @@ def run_kind(frame: pd.DataFrame, names: dict, out: Path, kind: str) -> tuple[li
     return folds, pd.concat(preds), gain
 
 
+def performance_table(out: Path) -> pd.DataFrame:
+    """One row per model (16): data kind, task, held-out condition and its metrics."""
+    rows = []
+    for f in sorted(out.glob("*/*/heldout_*/metrics.json")):
+        m = json.loads(f.read_text())
+        x = m["metrics"]
+        row = {"데이터": m["data_kind"], "과제": {"binary": "정상vs손상", "grade": "4단계 등급"}[m["task"]],
+               "평가 조건": m["test_condition"], "학습 조건": "+".join(m["train_conditions"]),
+               "학습 Window": m["n_train_windows"], "평가 Window": m["n_test_windows"]}
+        if m["task"] == "binary":
+            row.update({"AUC 정상vs손상": round(x["auc_normal_vs_damaged"], 3),
+                        "AUC 정상vs위험": round(x["auc_normal_vs_danger"], 3),
+                        "오경보율": round(x["false_alarm"], 3),
+                        "위험 탐지율": round(x["detection_danger"], 3),
+                        "손상 전체 탐지율": round(x["detection_all_damage"], 3)})
+        else:
+            row["등급 정확도"] = round(x["grade_accuracy"], 3)
+        row["모델 폴더"] = str(f.parent.relative_to(out))
+        rows.append(row)
+    table = pd.DataFrame(rows).sort_values(["과제", "데이터", "평가 조건"], ascending=[False, False, True])
+    means = (table.groupby(["데이터", "과제"], sort=False).mean(numeric_only=True).round(3).reset_index())
+    means["평가 조건"] = "평균 (4개)"
+    table = pd.concat([table, means], ignore_index=True)
+    table.to_csv(out / "performance.csv", index=False, encoding="utf-8-sig")
+    return table
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out-dir", type=Path, default=Path("data/processed/public_grade/xgb_sm"))
@@ -288,6 +315,7 @@ def main(argv=None) -> int:
               f"오경보 {m['false_alarm']:.3f}, 위험 탐지 {m['detection_danger']:.3f}, "
               f"손상 전체 탐지 {m['detection_all_damage']:.3f}, 등급 정확도 {m['grade_accuracy']:.3f}")
     write_json(args.summary, summary)
+    performance_table(out)
     return 0
 
 
