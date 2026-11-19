@@ -273,7 +273,8 @@ def run_kind(spec: Spec, frame: pd.DataFrame, names: dict, out: Path, kind: str,
         folds.append({"held_out": plan["test_label"], "n_train": plan["n_train_windows"],
                       "n_test": plan["n_test_windows"], **b_metrics, "grade_accuracy": g_metrics["grade_accuracy"]})
     gain = pd.concat(gains, axis=1).fillna(0).mean(axis=1).sort_values(ascending=False)
-    return folds, pd.concat(preds), gain
+    # a normal recording can be evaluated by several models (NM), so renumber rows
+    return folds, pd.concat(preds, ignore_index=True), gain
 
 
 def performance_table(out: Path) -> pd.DataFrame:
