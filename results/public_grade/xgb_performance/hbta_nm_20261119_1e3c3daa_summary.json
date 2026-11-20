@@ -1,0 +1,538 @@
+{
+ "run_id": "hbta_nm_20261119_1e3c3daa",
+ "dataset": "hbta_nm",
+ "input_fingerprint": "1e3c3daac11843f1b8885bdf2330f8a7",
+ "inputs_md5": {
+  "data/raw/ai1_public_1.1/hbta_anomaly_results_raw.csv": "491987d3d77212a4da70bb541d650b86",
+  "data/raw/ai1_public_1.1/hbta_anomaly_results_deg.csv": "f02a08d38e591be59c6051cb204cf679"
+ },
+ "note": "개발용 실험 (이미 본 데이터, 결과 열람 후). 성능 근거 아님. 모델은 개발용 폴더에만 저장, API 연결 없음",
+ "design": "(fixed before the first run, 2026-11-19):\n  data      HBTA NM (AI1-public-1.1): position P2, vertical excitation,\n            UDS_01 (9/27), UDS_02 (9/22), DS1-DS8 one recording each (9/27-28)\n  windows   degraded hold_main = False (no NM window is held)\n  features  same window-intrinsic AI① features as the SM experiment, without\n            window_start_s (NM has no sweep; time within a recording would only\n            identify the recording). Degraded y-axis AR is almost all missing.\n  split     a recording is never split. 8 folds, one per damage state: hold\n            out that damage recording + one normal recording, train on the\n            other 7 damage recordings + the other normal recording.\n            Normal recording held out: UDS_02 (9/22) for DS1, DS3, DS5, DS7;\n            UDS_01 (9/27) for DS2, DS4, DS6, DS8.\n  tasks, params, metrics: same as the SM experiment (xgb_engine)\n  limits    damage recordings are 9/27-28 only and one normal day is always\n            missing from training, so a model can learn the date instead of\n            damage; training normal data is a single day in every fold.",
+ "features": [
+  "acc01_mean_y",
+  "acc01_rms_y",
+  "acc01_std_y",
+  "acc01_max_y",
+  "acc01_min_y",
+  "acc01_p2p_y",
+  "acc01_crest_y",
+  "acc01_dom_freq_y",
+  "acc01_band_2_8_y",
+  "acc01_band_8_15_y",
+  "acc01_band_15_25_y",
+  "acc01_mean_z",
+  "acc01_rms_z",
+  "acc01_std_z",
+  "acc01_max_z",
+  "acc01_min_z",
+  "acc01_p2p_z",
+  "acc01_crest_z",
+  "acc01_dom_freq_z",
+  "acc01_band_2_8_z",
+  "acc01_band_8_15_z",
+  "acc01_band_15_25_z",
+  "acc02_mean_y",
+  "acc02_rms_y",
+  "acc02_std_y",
+  "acc02_max_y",
+  "acc02_min_y",
+  "acc02_p2p_y",
+  "acc02_crest_y",
+  "acc02_dom_freq_y",
+  "acc02_band_2_8_y",
+  "acc02_band_8_15_y",
+  "acc02_band_15_25_y",
+  "acc02_mean_z",
+  "acc02_rms_z",
+  "acc02_std_z",
+  "acc02_max_z",
+  "acc02_min_z",
+  "acc02_p2p_z",
+  "acc02_crest_z",
+  "acc02_dom_freq_z",
+  "acc02_band_2_8_z",
+  "acc02_band_8_15_z",
+  "acc02_band_15_25_z",
+  "cross_amp_ratio_L4_L2_z",
+  "cross_torsion_y_z_L2",
+  "acc01_ar1_y",
+  "acc01_ar2_y",
+  "acc01_ar3_y",
+  "acc01_ar4_y",
+  "acc01_ar5_y",
+  "acc01_ar1_z",
+  "acc01_ar2_z",
+  "acc01_ar3_z",
+  "acc01_ar4_z",
+  "acc01_ar5_z",
+  "acc02_ar1_y",
+  "acc02_ar2_y",
+  "acc02_ar3_y",
+  "acc02_ar4_y",
+  "acc02_ar5_y",
+  "acc02_ar1_z",
+  "acc02_ar2_z",
+  "acc02_ar3_z",
+  "acc02_ar4_z",
+  "acc02_ar5_z"
+ ],
+ "params": {
+  "n_estimators": 300,
+  "max_depth": 3,
+  "learning_rate": 0.05,
+  "subsample": 0.8,
+  "colsample_bytree": 0.8,
+  "min_child_weight": 5,
+  "reg_lambda": 1.0,
+  "tree_method": "hist",
+  "random_state": 20261109,
+  "n_jobs": 4
+ },
+ "code_commit": "749aaffbfe745d9eb5a01ea5b111e55817e780cd",
+ "models": {
+  "raw": {
+   "n_windows": 820,
+   "folds": [
+    {
+     "held_out": "DS1 + UDS_02(9/22)",
+     "n_train": 656,
+     "n_test": 164,
+     "auc_normal_vs_damaged": 0.9690660321237359,
+     "auc_normal_vs_danger": null,
+     "false_alarm": 0.3780487804878049,
+     "false_alarm_by_record": {
+      "MVS_P2_UDS_NM_Z_02": 0.378
+     },
+     "detection_danger": null,
+     "detection_all_damage": 1.0,
+     "detection_by_state": {
+      "DS1": 1.0
+     },
+     "grade_accuracy": 0.2865853658536585
+    },
+    {
+     "held_out": "DS2 + UDS_01(9/27)",
+     "n_train": 656,
+     "n_test": 164,
+     "auc_normal_vs_damaged": 0.9507733491969066,
+     "auc_normal_vs_danger": 0.9507733491969066,
+     "false_alarm": 0.524390243902439,
+     "false_alarm_by_record": {
+      "MVS_P2_UDS_NM_Z_01": 0.524
+     },
+     "detection_danger": 1.0,
+     "detection_all_damage": 1.0,
+     "detection_by_state": {
+      "DS2": 1.0
+     },
+     "grade_accuracy": 0.24390243902439024
+    },
+    {
+     "held_out": "DS3 + UDS_02(9/22)",
+     "n_train": 656,
+     "n_test": 164,
+     "auc_normal_vs_damaged": 0.8524687685901249,
+     "auc_normal_vs_danger": null,
+     "false_alarm": 0.2926829268292683,
+     "false_alarm_by_record": {
+      "MVS_P2_UDS_NM_Z_02": 0.293
+     },
+     "detection_danger": null,
+     "detection_all_damage": 0.8902439024390244,
+     "detection_by_state": {
+      "DS3": 0.89
+     },
+     "grade_accuracy": 0.34146341463414637
+    },
+    {
+     "held_out": "DS4 + UDS_01(9/27)",
+     "n_train": 656,
+     "n_test": 164,
+     "auc_normal_vs_damaged": 0.8813206424747174,
+     "auc_normal_vs_danger": null,
+     "false_alarm": 0.3048780487804878,
+     "false_alarm_by_record": {
+      "MVS_P2_UDS_NM_Z_01": 0.305
+     },
+     "detection_danger": null,
+     "detection_all_damage": 0.8902439024390244,
+     "detection_by_state": {
+      "DS4": 0.89
+     },
+     "grade_accuracy": 0.3170731707317073
+    },
+    {
+     "held_out": "DS5 + UDS_02(9/22)",
+     "n_train": 656,
+     "n_test": 164,
+     "auc_normal_vs_damaged": 0.9013979773944081,
+     "auc_normal_vs_danger": null,
+     "false_alarm": 0.35365853658536583,
+     "false_alarm_by_record": {
+      "MVS_P2_UDS_NM_Z_02": 0.354
+     },
+     "detection_danger": null,
+     "detection_all_damage": 0.9512195121951219,
+     "detection_by_state": {
+      "DS5": 0.951
+     },
+     "grade_accuracy": 0.3048780487804878
+    },
+    {
+     "held_out": "DS6 + UDS_01(9/27)",
+     "n_train": 656,
+     "n_test": 164,
+     "auc_normal_vs_damaged": 0.973081499107674,
+     "auc_normal_vs_danger": null,
+     "false_alarm": 0.5,
+     "false_alarm_by_record": {
+      "MVS_P2_UDS_NM_Z_01": 0.5
+     },
+     "detection_danger": null,
+     "detection_all_damage": 1.0,
+     "detection_by_state": {
+      "DS6": 1.0
+     },
+     "grade_accuracy": 0.23780487804878048
+    },
+    {
+     "held_out": "DS7 + UDS_02(9/22)",
+     "n_train": 656,
+     "n_test": 164,
+     "auc_normal_vs_damaged": 0.9812611540749554,
+     "auc_normal_vs_danger": null,
+     "false_alarm": 0.36585365853658536,
+     "false_alarm_by_record": {
+      "MVS_P2_UDS_NM_Z_02": 0.366
+     },
+     "detection_danger": null,
+     "detection_all_damage": 1.0,
+     "detection_by_state": {
+      "DS7": 1.0
+     },
+     "grade_accuracy": 0.3048780487804878
+    },
+    {
+     "held_out": "DS8 + UDS_01(9/27)",
+     "n_train": 656,
+     "n_test": 164,
+     "auc_normal_vs_damaged": 0.9470553242117787,
+     "auc_normal_vs_danger": 0.9470553242117787,
+     "false_alarm": 0.4878048780487805,
+     "false_alarm_by_record": {
+      "MVS_P2_UDS_NM_Z_01": 0.488
+     },
+     "detection_danger": 1.0,
+     "detection_all_damage": 1.0,
+     "detection_by_state": {
+      "DS8": 1.0
+     },
+     "grade_accuracy": 0.23170731707317074
+    }
+   ],
+   "mean": {
+    "auc_normal_vs_damaged": 0.9320530933967877,
+    "auc_normal_vs_danger": 0.9489143367043427,
+    "false_alarm": 0.40091463414634143,
+    "detection_danger": 1.0,
+    "detection_all_damage": 0.9664634146341463,
+    "grade_accuracy": 0.2835365853658537
+   },
+   "grade_mix_by_state": {
+    "DS1": {
+     "정상": 0.0,
+     "주의": 0.902,
+     "경고": 0.0,
+     "위험": 0.098
+    },
+    "DS2": {
+     "정상": 0.0,
+     "주의": 0.22,
+     "경고": 0.768,
+     "위험": 0.012
+    },
+    "DS3": {
+     "정상": 0.098,
+     "주의": 0.0,
+     "경고": 0.878,
+     "위험": 0.024
+    },
+    "DS4": {
+     "정상": 0.085,
+     "주의": 0.878,
+     "경고": 0.0,
+     "위험": 0.037
+    },
+    "DS5": {
+     "정상": 0.024,
+     "주의": 0.0,
+     "경고": 0.976,
+     "위험": 0.0
+    },
+    "DS6": {
+     "정상": 0.0,
+     "주의": 0.0,
+     "경고": 0.963,
+     "위험": 0.037
+    },
+    "DS7": {
+     "정상": 0.0,
+     "주의": 0.951,
+     "경고": 0.012,
+     "위험": 0.037
+    },
+    "DS8": {
+     "정상": 0.0,
+     "주의": 0.39,
+     "경고": 0.61,
+     "위험": 0.0
+    },
+    "UDS": {
+     "정상": 0.564,
+     "주의": 0.236,
+     "경고": 0.2,
+     "위험": 0.0
+    }
+   },
+   "top_features_gain": {
+    "acc01_ar4_z (가속도계 acc01(L/4 부근) 수직 AR 계수 4)": 40.27,
+    "acc01_ar3_y (가속도계 acc01(L/4 부근) 횡방향 AR 계수 3)": 37.13,
+    "acc01_ar4_y (가속도계 acc01(L/4 부근) 횡방향 AR 계수 4)": 35.08,
+    "acc01_ar5_y (가속도계 acc01(L/4 부근) 횡방향 AR 계수 5)": 26.67,
+    "acc02_dom_freq_y (가속도계 acc02(L/2) 횡방향 주된 진동수(Hz))": 12.35,
+    "acc01_p2p_y (가속도계 acc01(L/4 부근) 횡방향 최대-최소 폭)": 12.28,
+    "acc01_p2p_z (가속도계 acc01(L/4 부근) 수직 최대-최소 폭)": 10.93,
+    "acc01_band_2_8_y (가속도계 acc01(L/4 부근) 횡방향 2–8Hz 에너지 비율)": 10.87,
+    "cross_torsion_y_z_L2 (가속도계 acc02(L/2) 횡방향/수직 비(비틀림))": 8.64,
+    "acc01_ar1_y (가속도계 acc01(L/4 부근) 횡방향 AR 계수 1)": 8.07,
+    "acc02_ar3_z (가속도계 acc02(L/2) 수직 AR 계수 3)": 8.02,
+    "acc01_rms_y (가속도계 acc01(L/4 부근) 횡방향 RMS)": 7.24,
+    "acc01_ar2_z (가속도계 acc01(L/4 부근) 수직 AR 계수 2)": 7.24,
+    "acc01_ar5_z (가속도계 acc01(L/4 부근) 수직 AR 계수 5)": 7.21,
+    "acc02_ar3_y (가속도계 acc02(L/2) 횡방향 AR 계수 3)": 6.79
+   }
+  },
+  "deg": {
+   "n_windows": 820,
+   "folds": [
+    {
+     "held_out": "DS1 + UDS_02(9/22)",
+     "n_train": 656,
+     "n_test": 164,
+     "auc_normal_vs_damaged": 0.8059190957763236,
+     "auc_normal_vs_danger": null,
+     "false_alarm": 0.8902439024390244,
+     "false_alarm_by_record": {
+      "MVS_P2_UDS_NM_Z_02": 0.89
+     },
+     "detection_danger": null,
+     "detection_all_damage": 0.9878048780487805,
+     "detection_by_state": {
+      "DS1": 0.988
+     },
+     "grade_accuracy": 0.25609756097560976
+    },
+    {
+     "held_out": "DS2 + UDS_01(9/27)",
+     "n_train": 656,
+     "n_test": 164,
+     "auc_normal_vs_damaged": 0.5865556216537775,
+     "auc_normal_vs_danger": 0.5865556216537775,
+     "false_alarm": 0.8780487804878049,
+     "false_alarm_by_record": {
+      "MVS_P2_UDS_NM_Z_01": 0.878
+     },
+     "detection_danger": 0.9634146341463414,
+     "detection_all_damage": 0.9634146341463414,
+     "detection_by_state": {
+      "DS2": 0.963
+     },
+     "grade_accuracy": 0.09146341463414634
+    },
+    {
+     "held_out": "DS3 + UDS_02(9/22)",
+     "n_train": 656,
+     "n_test": 164,
+     "auc_normal_vs_damaged": 0.5716835217132659,
+     "auc_normal_vs_danger": null,
+     "false_alarm": 0.6463414634146342,
+     "false_alarm_by_record": {
+      "MVS_P2_UDS_NM_Z_02": 0.646
+     },
+     "detection_danger": null,
+     "detection_all_damage": 0.7317073170731707,
+     "detection_by_state": {
+      "DS3": 0.732
+     },
+     "grade_accuracy": 0.2621951219512195
+    },
+    {
+     "held_out": "DS4 + UDS_01(9/27)",
+     "n_train": 656,
+     "n_test": 164,
+     "auc_normal_vs_damaged": 0.462819750148721,
+     "auc_normal_vs_danger": null,
+     "false_alarm": 0.8170731707317073,
+     "false_alarm_by_record": {
+      "MVS_P2_UDS_NM_Z_01": 0.817
+     },
+     "detection_danger": null,
+     "detection_all_damage": 0.7560975609756098,
+     "detection_by_state": {
+      "DS4": 0.756
+     },
+     "grade_accuracy": 0.12195121951219512
+    },
+    {
+     "held_out": "DS5 + UDS_02(9/22)",
+     "n_train": 656,
+     "n_test": 164,
+     "auc_normal_vs_damaged": 0.6451516954193932,
+     "auc_normal_vs_danger": null,
+     "false_alarm": 0.7804878048780488,
+     "false_alarm_by_record": {
+      "MVS_P2_UDS_NM_Z_02": 0.78
+     },
+     "detection_danger": null,
+     "detection_all_damage": 0.7682926829268293,
+     "detection_by_state": {
+      "DS5": 0.768
+     },
+     "grade_accuracy": 0.2926829268292683
+    },
+    {
+     "held_out": "DS6 + UDS_01(9/27)",
+     "n_train": 656,
+     "n_test": 164,
+     "auc_normal_vs_damaged": 0.7285841760856633,
+     "auc_normal_vs_danger": null,
+     "false_alarm": 0.8658536585365854,
+     "false_alarm_by_record": {
+      "MVS_P2_UDS_NM_Z_01": 0.866
+     },
+     "detection_danger": null,
+     "detection_all_damage": 0.975609756097561,
+     "detection_by_state": {
+      "DS6": 0.976
+     },
+     "grade_accuracy": 0.1402439024390244
+    },
+    {
+     "held_out": "DS7 + UDS_02(9/22)",
+     "n_train": 656,
+     "n_test": 164,
+     "auc_normal_vs_damaged": 0.8359607376561571,
+     "auc_normal_vs_danger": null,
+     "false_alarm": 0.8780487804878049,
+     "false_alarm_by_record": {
+      "MVS_P2_UDS_NM_Z_02": 0.878
+     },
+     "detection_danger": null,
+     "detection_all_damage": 0.9634146341463414,
+     "detection_by_state": {
+      "DS7": 0.963
+     },
+     "grade_accuracy": 0.22560975609756098
+    },
+    {
+     "held_out": "DS8 + UDS_01(9/27)",
+     "n_train": 656,
+     "n_test": 164,
+     "auc_normal_vs_damaged": 0.739738251041047,
+     "auc_normal_vs_danger": 0.739738251041047,
+     "false_alarm": 0.8780487804878049,
+     "false_alarm_by_record": {
+      "MVS_P2_UDS_NM_Z_01": 0.878
+     },
+     "detection_danger": 0.975609756097561,
+     "detection_all_damage": 0.975609756097561,
+     "detection_by_state": {
+      "DS8": 0.976
+     },
+     "grade_accuracy": 0.0975609756097561
+    }
+   ],
+   "mean": {
+    "auc_normal_vs_damaged": 0.6720516061867936,
+    "auc_normal_vs_danger": 0.6631469363474123,
+    "false_alarm": 0.8292682926829268,
+    "detection_danger": 0.9695121951219512,
+    "detection_all_damage": 0.8902439024390243,
+    "grade_accuracy": 0.18597560975609756
+   },
+   "grade_mix_by_state": {
+    "DS1": {
+     "정상": 0.012,
+     "주의": 0.524,
+     "경고": 0.341,
+     "위험": 0.122
+    },
+    "DS2": {
+     "정상": 0.037,
+     "주의": 0.256,
+     "경고": 0.646,
+     "위험": 0.061
+    },
+    "DS3": {
+     "정상": 0.22,
+     "주의": 0.171,
+     "경고": 0.524,
+     "위험": 0.085
+    },
+    "DS4": {
+     "정상": 0.268,
+     "주의": 0.5,
+     "경고": 0.085,
+     "위험": 0.146
+    },
+    "DS5": {
+     "정상": 0.195,
+     "주의": 0.305,
+     "경고": 0.415,
+     "위험": 0.085
+    },
+    "DS6": {
+     "정상": 0.024,
+     "주의": 0.171,
+     "경고": 0.61,
+     "위험": 0.195
+    },
+    "DS7": {
+     "정상": 0.024,
+     "주의": 0.598,
+     "경고": 0.256,
+     "위험": 0.122
+    },
+    "DS8": {
+     "정상": 0.012,
+     "주의": 0.732,
+     "경고": 0.195,
+     "위험": 0.061
+    },
+    "UDS": {
+     "정상": 0.191,
+     "주의": 0.424,
+     "경고": 0.34,
+     "위험": 0.046
+    }
+   },
+   "top_features_gain": {
+    "acc01_ar4_z (가속도계 acc01(L/4 부근) 수직 AR 계수 4)": 15.14,
+    "acc02_ar2_z (가속도계 acc02(L/2) 수직 AR 계수 2)": 10.61,
+    "acc02_ar3_z (가속도계 acc02(L/2) 수직 AR 계수 3)": 8.73,
+    "acc02_std_z (가속도계 acc02(L/2) 수직 표준편차)": 6.44,
+    "acc01_ar5_z (가속도계 acc01(L/4 부근) 수직 AR 계수 5)": 6.29,
+    "acc01_band_15_25_z (가속도계 acc01(L/4 부근) 수직 15–25Hz 에너지 비율)": 5.92,
+    "acc01_rms_z (가속도계 acc01(L/4 부근) 수직 RMS)": 5.78,
+    "acc02_dom_freq_z (가속도계 acc02(L/2) 수직 주된 진동수(Hz))": 5.76,
+    "acc02_band_8_15_z (가속도계 acc02(L/2) 수직 8–15Hz 에너지 비율)": 5.44,
+    "acc01_p2p_z (가속도계 acc01(L/4 부근) 수직 최대-최소 폭)": 5.38,
+    "cross_amp_ratio_L4_L2_z (가속도계 acc01(L/4 부근)/가속도계 acc02(L/2) 수직 진폭비)": 5.36,
+    "acc02_rms_z (가속도계 acc02(L/2) 수직 RMS)": 5.2,
+    "acc02_ar1_z (가속도계 acc02(L/2) 수직 AR 계수 1)": 5.16,
+    "acc01_std_z (가속도계 acc01(L/4 부근) 수직 표준편차)": 5.12,
+    "acc02_ar4_z (가속도계 acc02(L/2) 수직 AR 계수 4)": 5.05
+   }
+  }
+ }
+}

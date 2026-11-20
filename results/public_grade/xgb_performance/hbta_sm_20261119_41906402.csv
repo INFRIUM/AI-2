@@ -1,0 +1,21 @@
+﻿데이터,과제,평가 대상,학습 대상,학습 Window,평가 Window,AUC 정상vs손상,AUC 정상vs위험,오경보율,위험 탐지율,손상 전체 탐지율,모델 폴더,등급 정확도
+raw,정상vs손상,SM_P1_Y,SM_P1_Z+SM_P2_Y+SM_P2_Z,951.0,370.0,0.608,0.619,0.636,0.829,0.778,raw/binary/heldout_SM_P1_Y,
+raw,정상vs손상,SM_P1_Z,SM_P1_Y+SM_P2_Y+SM_P2_Z,1031.0,290.0,0.56,0.493,0.672,0.712,0.806,raw/binary/heldout_SM_P1_Z,
+raw,정상vs손상,SM_P2_Y,SM_P1_Y+SM_P1_Z+SM_P2_Z,957.0,364.0,0.59,0.626,0.726,0.803,0.759,raw/binary/heldout_SM_P2_Y,
+raw,정상vs손상,SM_P2_Z,SM_P1_Y+SM_P1_Z+SM_P2_Y,1024.0,297.0,0.553,0.581,0.797,0.864,0.828,raw/binary/heldout_SM_P2_Z,
+deg,정상vs손상,SM_P1_Y,SM_P1_Z+SM_P2_Y+SM_P2_Z,951.0,370.0,0.541,0.499,0.909,0.882,0.86,deg/binary/heldout_SM_P1_Y,
+deg,정상vs손상,SM_P1_Z,SM_P1_Y+SM_P2_Y+SM_P2_Z,1031.0,290.0,0.545,0.596,0.81,0.915,0.858,deg/binary/heldout_SM_P1_Z,
+deg,정상vs손상,SM_P2_Y,SM_P1_Y+SM_P1_Z+SM_P2_Z,957.0,364.0,0.551,0.502,0.671,0.62,0.722,deg/binary/heldout_SM_P2_Y,
+deg,정상vs손상,SM_P2_Z,SM_P1_Y+SM_P1_Z+SM_P2_Y,1024.0,297.0,0.547,0.536,0.61,0.644,0.693,deg/binary/heldout_SM_P2_Z,
+raw,4단계 등급,SM_P1_Y,SM_P1_Z+SM_P2_Y+SM_P2_Z,951.0,370.0,,,,,,raw/grade/heldout_SM_P1_Y,0.322
+raw,4단계 등급,SM_P1_Z,SM_P1_Y+SM_P2_Y+SM_P2_Z,1031.0,290.0,,,,,,raw/grade/heldout_SM_P1_Z,0.259
+raw,4단계 등급,SM_P2_Y,SM_P1_Y+SM_P1_Z+SM_P2_Z,957.0,364.0,,,,,,raw/grade/heldout_SM_P2_Y,0.305
+raw,4단계 등급,SM_P2_Z,SM_P1_Y+SM_P1_Z+SM_P2_Y,1024.0,297.0,,,,,,raw/grade/heldout_SM_P2_Z,0.3
+deg,4단계 등급,SM_P1_Y,SM_P1_Z+SM_P2_Y+SM_P2_Z,951.0,370.0,,,,,,deg/grade/heldout_SM_P1_Y,0.224
+deg,4단계 등급,SM_P1_Z,SM_P1_Y+SM_P2_Y+SM_P2_Z,1031.0,290.0,,,,,,deg/grade/heldout_SM_P1_Z,0.307
+deg,4단계 등급,SM_P2_Y,SM_P1_Y+SM_P1_Z+SM_P2_Z,957.0,364.0,,,,,,deg/grade/heldout_SM_P2_Y,0.288
+deg,4단계 등급,SM_P2_Z,SM_P1_Y+SM_P1_Z+SM_P2_Y,1024.0,297.0,,,,,,deg/grade/heldout_SM_P2_Z,0.246
+raw,정상vs손상,평균 (4개),,990.75,330.25,0.578,0.58,0.708,0.802,0.793,,
+deg,정상vs손상,평균 (4개),,990.75,330.25,0.546,0.533,0.75,0.765,0.783,,
+raw,4단계 등급,평균 (4개),,990.75,330.25,,,,,,,0.296
+deg,4단계 등급,평균 (4개),,990.75,330.25,,,,,,,0.266
