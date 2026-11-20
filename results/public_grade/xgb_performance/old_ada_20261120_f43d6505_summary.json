@@ -1,0 +1,455 @@
+{
+ "run_id": "old_ada_20261120_f43d6505",
+ "dataset": "old_ada",
+ "input_fingerprint": "f43d65051cdf2c9243e4a829dc744803",
+ "inputs_md5": {
+  "data/raw/ai1_public_1.1/old_ada_anomaly_results_raw.csv": "0355442981ed0d5fa8ebf703cef28327",
+  "data/raw/ai1_public_1.1/old_ada_anomaly_results_deg.csv": "03b574d84c4d82e3a8f6593614f47ac7"
+ },
+ "note": "개발용 실험 (이미 본 데이터, 결과 열람 후). 성능 근거 아님. 모델은 개발용 폴더에만 저장, API 연결 없음",
+ "design": "(fixed before the first run, 2026-11-20):\n  data      Old ADA: one free-decay window per vehicle pass (68 passes)\n            normal INT 26 (40 km/h 10 + speed reference 30/50 km/h 16),\n            DMG1 12 (T1 half cut), DMG2 10 (T1 cut), DMG3 10 (T2 cut + T1\n            residual damage); RCV 10 (after repair, incomplete) excluded\n  features  vertical (z) window features available in Old ADA: the z part of\n            the shared feature set + damping ratio of both sensors (35).\n            Vehicle speed is NOT an input: damage passes are all near 40 km/h,\n            so speed would identify the label.\n  grade     AI② definition for this experiment (Old ADA had no grade map),\n            by the damage descriptions: INT 정상, DMG1 주의, DMG2 경고,\n            DMG3 위험. Danger for detection = DMG3.\n  split     a pass is never split. 5 folds stratified by stage (normal split\n            into 40 km/h and 30/50 km/h), fixed seed; each fold holds out\n            about 1/5 of the passes of every group.\n  tasks, params, metrics: same as the other experiments (xgb_engine), plus\n            false alarm by speed group (condition VBA_30/40/50)\n  limits    passes of one stage were probably driven in one session, so a\n            model can learn the session instead of damage; 58 passes only.",
+ "features": [
+  "acc01_mean_z",
+  "acc01_rms_z",
+  "acc01_std_z",
+  "acc01_max_z",
+  "acc01_min_z",
+  "acc01_p2p_z",
+  "acc01_crest_z",
+  "acc01_dom_freq_z",
+  "acc01_band_2_8_z",
+  "acc01_band_8_15_z",
+  "acc01_band_15_25_z",
+  "acc02_mean_z",
+  "acc02_rms_z",
+  "acc02_std_z",
+  "acc02_max_z",
+  "acc02_min_z",
+  "acc02_p2p_z",
+  "acc02_crest_z",
+  "acc02_dom_freq_z",
+  "acc02_band_2_8_z",
+  "acc02_band_8_15_z",
+  "acc02_band_15_25_z",
+  "cross_amp_ratio_L4_L2_z",
+  "acc01_ar1_z",
+  "acc01_ar2_z",
+  "acc01_ar3_z",
+  "acc01_ar4_z",
+  "acc01_ar5_z",
+  "acc02_ar1_z",
+  "acc02_ar2_z",
+  "acc02_ar3_z",
+  "acc02_ar4_z",
+  "acc02_ar5_z",
+  "acc01_damping_z",
+  "acc02_damping_z"
+ ],
+ "params": {
+  "n_estimators": 300,
+  "max_depth": 3,
+  "learning_rate": 0.05,
+  "subsample": 0.8,
+  "colsample_bytree": 0.8,
+  "min_child_weight": 5,
+  "reg_lambda": 1.0,
+  "tree_method": "hist",
+  "random_state": 20261109,
+  "n_jobs": 4
+ },
+ "code_commit": "98d49aa2892d2c771302bced9b1a73c62c177384",
+ "models": {
+  "raw": {
+   "n_windows": 58,
+   "folds": [
+    {
+     "held_out": "묶음 1 (INT 6, DMG1 3, DMG2 2, DMG3 2)",
+     "n_train": 45,
+     "n_test": 13,
+     "auc_normal_vs_damaged": 0.9047619047619048,
+     "auc_normal_vs_danger": 0.6666666666666666,
+     "false_alarm": 0.6666666666666666,
+     "false_alarm_by_record": {
+      "VBA INT 30km #10": 1.0,
+      "VBA INT 30km #11": 1.0,
+      "VBA INT 30km #5": 1.0,
+      "VBA INT 30km #6": 1.0,
+      "VBA INT 40km #4": 0.0,
+      "VBA INT 40km #7": 0.0
+     },
+     "false_alarm_by_condition": {
+      "VBA_30": 1.0,
+      "VBA_40": 0.0
+     },
+     "detection_danger": 1.0,
+     "detection_all_damage": 1.0,
+     "detection_by_state": {
+      "DMG1": 1.0,
+      "DMG2": 1.0,
+      "DMG3": 1.0
+     },
+     "grade_accuracy": 1.0
+    },
+    {
+     "held_out": "묶음 2 (INT 5, DMG1 3, DMG2 2, DMG3 2)",
+     "n_train": 46,
+     "n_test": 12,
+     "auc_normal_vs_damaged": 0.6857142857142857,
+     "auc_normal_vs_danger": 0.9,
+     "false_alarm": 0.4,
+     "false_alarm_by_record": {
+      "VBA INT 30km #7": 0.0,
+      "VBA INT 30km #8": 0.0,
+      "VBA INT 40km #3": 1.0,
+      "VBA INT 40km #9": 0.0,
+      "VBA INT 50km #2": 1.0
+     },
+     "false_alarm_by_condition": {
+      "VBA_30": 0.0,
+      "VBA_40": 0.5,
+      "VBA_50": 1.0
+     },
+     "detection_danger": 1.0,
+     "detection_all_damage": 0.5714285714285714,
+     "detection_by_state": {
+      "DMG1": 0.667,
+      "DMG2": 0.0,
+      "DMG3": 1.0
+     },
+     "grade_accuracy": 0.9166666666666666
+    },
+    {
+     "held_out": "묶음 3 (INT 5, DMG1 2, DMG2 2, DMG3 2)",
+     "n_train": 47,
+     "n_test": 11,
+     "auc_normal_vs_damaged": 0.5333333333333333,
+     "auc_normal_vs_danger": 0.2,
+     "false_alarm": 0.4,
+     "false_alarm_by_record": {
+      "VBA INT 30km #1": 1.0,
+      "VBA INT 30km #9": 0.0,
+      "VBA INT 40km #2": 1.0,
+      "VBA INT 40km #5": 0.0,
+      "VBA INT 50km #5": 0.0
+     },
+     "false_alarm_by_condition": {
+      "VBA_30": 0.5,
+      "VBA_40": 0.5,
+      "VBA_50": 0.0
+     },
+     "detection_danger": 0.0,
+     "detection_all_damage": 0.5,
+     "detection_by_state": {
+      "DMG1": 1.0,
+      "DMG2": 0.5,
+      "DMG3": 0.0
+     },
+     "grade_accuracy": 1.0
+    },
+    {
+     "held_out": "묶음 4 (INT 5, DMG1 2, DMG2 2, DMG3 2)",
+     "n_train": 47,
+     "n_test": 11,
+     "auc_normal_vs_damaged": 0.7666666666666667,
+     "auc_normal_vs_danger": 0.8,
+     "false_alarm": 0.4,
+     "false_alarm_by_record": {
+      "VBA INT 30km #2": 1.0,
+      "VBA INT 30km #3": 0.0,
+      "VBA INT 40km #6": 0.0,
+      "VBA INT 40km #8": 0.0,
+      "VBA INT 50km #3": 1.0
+     },
+     "false_alarm_by_condition": {
+      "VBA_30": 0.5,
+      "VBA_40": 0.0,
+      "VBA_50": 1.0
+     },
+     "detection_danger": 0.5,
+     "detection_all_damage": 0.6666666666666666,
+     "detection_by_state": {
+      "DMG1": 1.0,
+      "DMG2": 0.5,
+      "DMG3": 0.5
+     },
+     "grade_accuracy": 0.9090909090909091
+    },
+    {
+     "held_out": "묶음 5 (INT 5, DMG1 2, DMG2 2, DMG3 2)",
+     "n_train": 47,
+     "n_test": 11,
+     "auc_normal_vs_damaged": 0.6666666666666666,
+     "auc_normal_vs_danger": 0.8,
+     "false_alarm": 0.6,
+     "false_alarm_by_record": {
+      "VBA INT 30km #4": 1.0,
+      "VBA INT 40km #1": 0.0,
+      "VBA INT 40km #10": 0.0,
+      "VBA INT 50km #1": 1.0,
+      "VBA INT 50km #4": 1.0
+     },
+     "false_alarm_by_condition": {
+      "VBA_30": 1.0,
+      "VBA_40": 0.0,
+      "VBA_50": 1.0
+     },
+     "detection_danger": 1.0,
+     "detection_all_damage": 1.0,
+     "detection_by_state": {
+      "DMG1": 1.0,
+      "DMG2": 1.0,
+      "DMG3": 1.0
+     },
+     "grade_accuracy": 0.7272727272727273
+    }
+   ],
+   "mean": {
+    "auc_normal_vs_damaged": 0.7114285714285714,
+    "auc_normal_vs_danger": 0.6733333333333332,
+    "false_alarm": 0.49333333333333335,
+    "detection_danger": 0.7,
+    "detection_all_damage": 0.7476190476190475,
+    "grade_accuracy": 0.9106060606060605
+   },
+   "grade_mix_by_state": {
+    "DMG1": {
+     "정상": 0.0,
+     "주의": 1.0,
+     "경고": 0.0,
+     "위험": 0.0
+    },
+    "DMG2": {
+     "정상": 0.0,
+     "주의": 0.0,
+     "경고": 1.0,
+     "위험": 0.0
+    },
+    "DMG3": {
+     "정상": 0.0,
+     "주의": 0.0,
+     "경고": 0.0,
+     "위험": 1.0
+    },
+    "INT": {
+     "정상": 0.808,
+     "주의": 0.115,
+     "경고": 0.0,
+     "위험": 0.077
+    }
+   },
+   "top_features_gain": {
+    "acc01_damping_z (가속도계 acc01(L/4) 수직 감쇠비)": 5.65,
+    "acc02_damping_z (가속도계 acc02(L/2) 수직 감쇠비)": 4.46,
+    "acc02_dom_freq_z (가속도계 acc02(L/2) 수직 주된 진동수(Hz))": 3.57,
+    "acc02_ar5_z (가속도계 acc02(L/2) 수직 AR 계수 5)": 3.19,
+    "acc01_max_z (가속도계 acc01(L/4) 수직 최댓값)": 2.85,
+    "acc01_dom_freq_z (가속도계 acc01(L/4) 수직 주된 진동수(Hz))": 2.01,
+    "acc01_band_2_8_z (가속도계 acc01(L/4) 수직 2–8Hz 에너지 비율)": 1.4,
+    "acc01_ar1_z (가속도계 acc01(L/4) 수직 AR 계수 1)": 1.39,
+    "cross_amp_ratio_L4_L2_z (가속도계 acc01(L/4)/가속도계 acc02(L/2) 수직 진폭비)": 1.18,
+    "acc02_rms_z (가속도계 acc02(L/2) 수직 RMS)": 0.86,
+    "acc02_ar1_z (가속도계 acc02(L/2) 수직 AR 계수 1)": 0.65,
+    "acc02_band_8_15_z (가속도계 acc02(L/2) 수직 8–15Hz 에너지 비율)": 0.61,
+    "acc01_min_z (가속도계 acc01(L/4) 수직 최솟값)": 0.59,
+    "acc02_ar2_z (가속도계 acc02(L/2) 수직 AR 계수 2)": 0.58,
+    "acc01_p2p_z (가속도계 acc01(L/4) 수직 최대-최소 폭)": 0.56
+   }
+  },
+  "deg": {
+   "n_windows": 58,
+   "folds": [
+    {
+     "held_out": "묶음 1 (INT 6, DMG1 3, DMG2 2, DMG3 2)",
+     "n_train": 45,
+     "n_test": 13,
+     "auc_normal_vs_damaged": 0.8095238095238095,
+     "auc_normal_vs_danger": 0.6666666666666666,
+     "false_alarm": 0.3333333333333333,
+     "false_alarm_by_record": {
+      "VBA INT 30km #10": 1.0,
+      "VBA INT 30km #11": 0.0,
+      "VBA INT 30km #5": 0.0,
+      "VBA INT 30km #6": 1.0,
+      "VBA INT 40km #4": 0.0,
+      "VBA INT 40km #7": 0.0
+     },
+     "false_alarm_by_condition": {
+      "VBA_30": 0.5,
+      "VBA_40": 0.0
+     },
+     "detection_danger": 1.0,
+     "detection_all_damage": 0.8571428571428571,
+     "detection_by_state": {
+      "DMG1": 0.667,
+      "DMG2": 1.0,
+      "DMG3": 1.0
+     },
+     "grade_accuracy": 1.0
+    },
+    {
+     "held_out": "묶음 2 (INT 5, DMG1 3, DMG2 2, DMG3 2)",
+     "n_train": 46,
+     "n_test": 12,
+     "auc_normal_vs_damaged": 0.557142857142857,
+     "auc_normal_vs_danger": 1.0,
+     "false_alarm": 0.6,
+     "false_alarm_by_record": {
+      "VBA INT 30km #7": 1.0,
+      "VBA INT 30km #8": 1.0,
+      "VBA INT 40km #3": 0.0,
+      "VBA INT 40km #9": 0.0,
+      "VBA INT 50km #2": 1.0
+     },
+     "false_alarm_by_condition": {
+      "VBA_30": 1.0,
+      "VBA_40": 0.0,
+      "VBA_50": 1.0
+     },
+     "detection_danger": 1.0,
+     "detection_all_damage": 0.42857142857142855,
+     "detection_by_state": {
+      "DMG1": 0.0,
+      "DMG2": 0.5,
+      "DMG3": 1.0
+     },
+     "grade_accuracy": 0.9166666666666666
+    },
+    {
+     "held_out": "묶음 3 (INT 5, DMG1 2, DMG2 2, DMG3 2)",
+     "n_train": 47,
+     "n_test": 11,
+     "auc_normal_vs_damaged": 0.6833333333333333,
+     "auc_normal_vs_danger": 0.5,
+     "false_alarm": 0.4,
+     "false_alarm_by_record": {
+      "VBA INT 30km #1": 1.0,
+      "VBA INT 30km #9": 0.0,
+      "VBA INT 40km #2": 1.0,
+      "VBA INT 40km #5": 0.0,
+      "VBA INT 50km #5": 0.0
+     },
+     "false_alarm_by_condition": {
+      "VBA_30": 0.5,
+      "VBA_40": 0.5,
+      "VBA_50": 0.0
+     },
+     "detection_danger": 0.0,
+     "detection_all_damage": 0.5,
+     "detection_by_state": {
+      "DMG1": 1.0,
+      "DMG2": 0.5,
+      "DMG3": 0.0
+     },
+     "grade_accuracy": 1.0
+    },
+    {
+     "held_out": "묶음 4 (INT 5, DMG1 2, DMG2 2, DMG3 2)",
+     "n_train": 47,
+     "n_test": 11,
+     "auc_normal_vs_damaged": 0.8666666666666667,
+     "auc_normal_vs_danger": 0.8,
+     "false_alarm": 0.2,
+     "false_alarm_by_record": {
+      "VBA INT 30km #2": 0.0,
+      "VBA INT 30km #3": 0.0,
+      "VBA INT 40km #6": 0.0,
+      "VBA INT 40km #8": 0.0,
+      "VBA INT 50km #3": 1.0
+     },
+     "false_alarm_by_condition": {
+      "VBA_30": 0.0,
+      "VBA_40": 0.0,
+      "VBA_50": 1.0
+     },
+     "detection_danger": 0.5,
+     "detection_all_damage": 0.6666666666666666,
+     "detection_by_state": {
+      "DMG1": 1.0,
+      "DMG2": 0.5,
+      "DMG3": 0.5
+     },
+     "grade_accuracy": 0.9090909090909091
+    },
+    {
+     "held_out": "묶음 5 (INT 5, DMG1 2, DMG2 2, DMG3 2)",
+     "n_train": 47,
+     "n_test": 11,
+     "auc_normal_vs_damaged": 0.6,
+     "auc_normal_vs_danger": 1.0,
+     "false_alarm": 0.6,
+     "false_alarm_by_record": {
+      "VBA INT 30km #4": 1.0,
+      "VBA INT 40km #1": 0.0,
+      "VBA INT 40km #10": 0.0,
+      "VBA INT 50km #1": 1.0,
+      "VBA INT 50km #4": 1.0
+     },
+     "false_alarm_by_condition": {
+      "VBA_30": 1.0,
+      "VBA_40": 0.0,
+      "VBA_50": 1.0
+     },
+     "detection_danger": 1.0,
+     "detection_all_damage": 1.0,
+     "detection_by_state": {
+      "DMG1": 1.0,
+      "DMG2": 1.0,
+      "DMG3": 1.0
+     },
+     "grade_accuracy": 0.7272727272727273
+    }
+   ],
+   "mean": {
+    "auc_normal_vs_damaged": 0.7033333333333334,
+    "auc_normal_vs_danger": 0.7933333333333333,
+    "false_alarm": 0.42666666666666664,
+    "detection_danger": 0.7,
+    "detection_all_damage": 0.6904761904761905,
+    "grade_accuracy": 0.9106060606060605
+   },
+   "grade_mix_by_state": {
+    "DMG1": {
+     "정상": 0.0,
+     "주의": 1.0,
+     "경고": 0.0,
+     "위험": 0.0
+    },
+    "DMG2": {
+     "정상": 0.0,
+     "주의": 0.0,
+     "경고": 1.0,
+     "위험": 0.0
+    },
+    "DMG3": {
+     "정상": 0.0,
+     "주의": 0.0,
+     "경고": 0.0,
+     "위험": 1.0
+    },
+    "INT": {
+     "정상": 0.808,
+     "주의": 0.115,
+     "경고": 0.0,
+     "위험": 0.077
+    }
+   },
+   "top_features_gain": {
+    "acc01_damping_z (가속도계 acc01(L/4) 수직 감쇠비)": 5.88,
+    "acc02_ar5_z (가속도계 acc02(L/2) 수직 AR 계수 5)": 5.82,
+    "acc02_ar4_z (가속도계 acc02(L/2) 수직 AR 계수 4)": 5.27,
+    "acc02_damping_z (가속도계 acc02(L/2) 수직 감쇠비)": 4.36,
+    "acc02_dom_freq_z (가속도계 acc02(L/2) 수직 주된 진동수(Hz))": 2.76,
+    "acc01_max_z (가속도계 acc01(L/4) 수직 최댓값)": 2.53,
+    "acc01_dom_freq_z (가속도계 acc01(L/4) 수직 주된 진동수(Hz))": 2.0,
+    "acc01_band_2_8_z (가속도계 acc01(L/4) 수직 2–8Hz 에너지 비율)": 1.1,
+    "acc01_p2p_z (가속도계 acc01(L/4) 수직 최대-최소 폭)": 1.08,
+    "cross_amp_ratio_L4_L2_z (가속도계 acc01(L/4)/가속도계 acc02(L/2) 수직 진폭비)": 0.99,
+    "acc02_band_8_15_z (가속도계 acc02(L/2) 수직 8–15Hz 에너지 비율)": 0.59,
+    "acc02_rms_z (가속도계 acc02(L/2) 수직 RMS)": 0.57,
+    "acc01_min_z (가속도계 acc01(L/4) 수직 최솟값)": 0.57,
+    "acc01_ar1_z (가속도계 acc01(L/4) 수직 AR 계수 1)": 0.52,
+    "acc02_band_15_25_z (가속도계 acc02(L/2) 수직 15–25Hz 에너지 비율)": 0.47
+   }
+  }
+ }
+}
