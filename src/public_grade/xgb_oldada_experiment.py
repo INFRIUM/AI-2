@@ -24,7 +24,13 @@ Design (fixed before the first run, 2026-11-20):
   limits    passes of one stage were probably driven in one session, so a
             model can learn the session instead of damage; 58 passes only.
 
-Usage: python -m src.public_grade.xgb_oldada_experiment
+Variants (5-2, added 2026-11-20 before running them; --variant):
+  base  the design above, decision p > 0.5 (run old_ada_20261120_f43d6505)
+  p95   same models, decision threshold = 95th percentile of out-of-fold
+        probabilities of the TRAINING normal passes (inner 5-fold split by
+        pass inside the training data). Evaluated passes are never used.
+
+Usage: python -m src.public_grade.xgb_oldada_experiment [--variant base|p95]
 """
 
 from __future__ import annotations
@@ -96,9 +102,10 @@ def fold_plan(frame: pd.DataFrame) -> list[dict]:
     return plan
 
 
+DOC = __doc__.split("Design")[1].split("Usage")[0].strip()
 SPEC = xe.Spec(
     name="old_ada", input_files=INPUT_FILES, features=FEATURES, design=EVAL_DESIGN,
-    design_doc=__doc__.split("Design")[1].split("Usage")[0].strip(),
+    design_doc=DOC,
     eval_label="주행 단위 5묶음 나누기 (손상 상태·속도별 고르게, RCV 제외)",
     load=load_frames, plan=fold_plan, sensor_dir=DATA_DIR, extra_columns=("speed_kmh",),
     normal_stage="INT", danger_stages=("DMG3",), grade_of=GRADE_OF, exclude_stages=("RCV",),
@@ -106,8 +113,18 @@ SPEC = xe.Spec(
 )
 
 
+SPEC_P95 = xe.Spec(
+    name="old_ada", input_files=INPUT_FILES, features=FEATURES, design=EVAL_DESIGN + "; threshold normal_p95 inner5",
+    design_doc=DOC + "\nvariant: p95", eval_label="주행 단위 5묶음 + 기준을 학습 정상 데이터 상위 5%로",
+    load=load_frames, plan=fold_plan, sensor_dir=DATA_DIR, extra_columns=("speed_kmh",),
+    normal_stage="INT", danger_stages=("DMG3",), grade_of=GRADE_OF, exclude_stages=("RCV",),
+    sensor_dataset="old_ada", threshold_mode="normal_p95",
+)
+VARIANTS = {"base": SPEC, "p95": SPEC_P95}
+
+
 def main(argv=None) -> int:
-    return xe.main(SPEC, argv)
+    return xe.main(VARIANTS, argv)
 
 
 if __name__ == "__main__":

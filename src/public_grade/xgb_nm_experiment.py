@@ -21,13 +21,25 @@ Design (fixed before the first run, 2026-11-19):
             missing from training, so a model can learn the date instead of
             damage; training normal data is a single day in every fold.
 
-Usage: python -m src.public_grade.xgb_nm_experiment
+Variants (5-2, added 2026-11-20 before running them; --variant):
+  base      the design above, decision p > 0.5 (run hbta_nm_20261119_1e3c3daa)
+  p95       same models, decision threshold = 95th percentile of out-of-fold
+            probabilities of the TRAINING normal windows (inner 5-fold split
+            inside the training data; the normal recording is cut into 4 time
+            blocks so it can appear in the inner split). Evaluated windows are
+            never used to set the threshold.
+  avg3_p95  features averaged over 3 consecutive windows of the same recording
+            (causal; the first 2 windows of a recording are dropped), then p95
+
+Usage: python -m src.public_grade.xgb_nm_experiment [--variant base|p95|avg3_p95]
 """
 
 from __future__ import annotations
 
+from functools import partial
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from src.public_grade import loader
@@ -41,13 +53,24 @@ NORMAL = {"01": "MVS_P2_UDS_NM_Z_01", "02": "MVS_P2_UDS_NM_Z_02"}
 NORMAL_DATE = {"01": "9/27", "02": "9/22"}
 
 
-def load_frames() -> dict:
+def average_windows(frame: pd.DataFrame, k: int) -> pd.DataFrame:
+    """Mean of each feature over k consecutive windows ending at a window (same recording)."""
+    frame = frame.sort_values(["source_record", "window_start_us"]).copy()
+    rolled = frame.groupby("source_record")[FEATURES].rolling(k, min_periods=k).mean()
+    frame[FEATURES] = rolled.reset_index(level=0, drop=True).loc[frame.index].to_numpy()
+    first = frame.groupby("source_record").cumcount() < k - 1
+    return frame[~first]
+
+
+def load_frames(k: int = 1) -> dict:
     raw, deg = loader.load_pair(DATA_DIR, "hbta")
     held = deg["held_main"].to_numpy()
     out = {}
     for kind, frame in (("raw", raw), ("deg", deg)):
         frame = frame.copy()
         frame["held"] = held
+        if k > 1:
+            frame = average_windows(frame, k)
         out[kind] = xe.label_frame(frame)
     keys = ["experiment_id", "window_start_us"]
     if not out["raw"][keys].equals(out["deg"][keys]):
@@ -74,16 +97,39 @@ def fold_plan(frame: pd.DataFrame) -> list[dict]:
     return plan
 
 
+def inner_groups(frame: pd.DataFrame) -> pd.Series:
+    """Inner split groups: one per damage recording; each normal recording cut into 4 time blocks."""
+    group = frame["source_record"].astype(str).copy()
+    for rec in frame.loc[frame["damage_stage"] == "UDS", "source_record"].unique():
+        idx = frame.index[frame["source_record"] == rec]
+        order = frame.loc[idx, "window_start_us"].rank(method="first").to_numpy() - 1
+        group[idx] = [f"{rec}#b{int(q)}" for q in np.floor(order * 4 / len(idx))]
+    return group
+
+
+DOC = __doc__.split("Design")[1].split("Usage")[0].strip()
 SPEC = xe.Spec(
-    name="hbta_nm", input_files=INPUT_FILES, features=FEATURES, design=EVAL_DESIGN,
-    design_doc=__doc__.split("Design")[1].split("Usage")[0].strip(),
+    name="hbta_nm", input_files=INPUT_FILES, features=FEATURES, design=EVAL_DESIGN, design_doc=DOC,
     eval_label="손상 측정 1개 + 정상 측정 1개 빼기 (8번, 측정을 자르지 않음)",
     load=load_frames, plan=fold_plan, sensor_dir=DATA_DIR,
 )
+SPEC_P95 = xe.Spec(
+    name="hbta_nm", input_files=INPUT_FILES, features=FEATURES, design=EVAL_DESIGN + "; threshold normal_p95 inner5",
+    design_doc=DOC + "\nvariant: p95", eval_label="측정 빼기 8번 + 기준을 학습 정상 데이터 상위 5%로",
+    load=load_frames, plan=fold_plan, sensor_dir=DATA_DIR, threshold_mode="normal_p95", inner_groups=inner_groups,
+)
+SPEC_AVG3_P95 = xe.Spec(
+    name="hbta_nm_avg3", input_files=INPUT_FILES, features=FEATURES,
+    design=EVAL_DESIGN + "; features mean of 3 consecutive windows; threshold normal_p95 inner5",
+    design_doc=DOC + "\nvariant: avg3_p95", eval_label="Window 3개 평균 + 측정 빼기 8번 + 기준을 학습 정상 데이터 상위 5%로",
+    load=partial(load_frames, k=3), plan=fold_plan, sensor_dir=DATA_DIR,
+    threshold_mode="normal_p95", inner_groups=inner_groups,
+)
+VARIANTS = {"base": SPEC, "p95": SPEC_P95, "avg3_p95": SPEC_AVG3_P95}
 
 
 def main(argv=None) -> int:
-    return xe.main(SPEC, argv)
+    return xe.main(VARIANTS, argv)
 
 
 if __name__ == "__main__":

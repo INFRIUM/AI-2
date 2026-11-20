@@ -49,3 +49,23 @@ def test_oldada_folds_cover_each_pass_once_and_stratify():
     plan = xo.fold_plan(f)
     tested = sorted(r for p in plan for r in p["test_records"])
     assert tested == sorted(f["source_record"])                      # every pass evaluated exactly once
+
+
+def test_inner_threshold_uses_training_normals_only():
+    import numpy as np
+    from src.public_grade import xgb_engine as xe
+    rng = np.random.default_rng(0)
+    n = 120
+    X = pd.DataFrame({"a": np.r_[rng.normal(0, 1, 60), rng.normal(3, 1, 60)], "b": rng.normal(0, 1, n)})
+    y = pd.Series([0] * 60 + [1] * 60)
+    groups = pd.Series([f"g{i % 6}" for i in range(n)])
+    out = xe.inner_threshold(X, y, groups)
+    assert out["inner_splits"] == 5 and out["n_normal_oof"] == 60
+    assert 0.0 < out["threshold"] < 1.0
+
+
+def test_reason_mentions_normal_based_threshold():
+    import numpy as np
+    from src.public_grade import xgb_engine as xe
+    text = xe.binary_reason(0.42, np.array([1.0]), np.array([0.3]), ["X"], threshold=0.31)
+    assert text.startswith("손상 확률 0.42 (기준 0.31 (정상 데이터 상위 5%) 초과 → 손상)")

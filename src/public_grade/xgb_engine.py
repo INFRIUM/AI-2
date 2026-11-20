@@ -78,6 +78,9 @@ class Spec:
     grade_of: dict | None = None                # damage_stage -> 정상/주의/경고/위험 (None = HBTA GRADE_OF)
     exclude_stages: tuple = ()                  # stages left out of training and evaluation
     sensor_dataset: str = "hbta"                # dataset name in sensor_info.csv
+    threshold_mode: str = "fixed"               # "fixed" = p > 0.5, "normal_p95" = p95 of out-of-fold
+                                                # training-normal probabilities (inner split)
+    inner_groups: Callable | None = None        # frame -> group label for the inner split (default: recording)
 
 
 # fold dict keys: model_folder, test_label, train_label, train_records, test_records,
@@ -156,11 +159,12 @@ def _contrib_text(names, values, contribs, idx) -> str:
                      else f"{names[i]} 값 없음 (영향 {contribs[i]:+.2f})" for i in idx)
 
 
-def binary_reason(p: float, values: np.ndarray, contribs: np.ndarray, names: list) -> str:
-    """판정 사유: probability vs 0.5 and the features that pushed most toward each side.
+def binary_reason(p: float, values: np.ndarray, contribs: np.ndarray, names: list, threshold: float = 0.5) -> str:
+    """판정 사유: probability vs the threshold and the features that pushed most toward each side.
     contribs are SHAP values in log-odds (positive = toward 손상)."""
-    decision = "손상" if p > 0.5 else "정상"
-    head = f"손상 확률 {p:.2f} (기준 0.5 {'초과' if p > 0.5 else '이하'} → {decision})"
+    decision = "손상" if p > threshold else "정상"
+    th = "0.5" if threshold == 0.5 else f"{threshold:.2f} (정상 데이터 상위 5%)"
+    head = f"손상 확률 {p:.2f} (기준 {th} {'초과' if p > threshold else '이하'} → {decision})"
     order = np.argsort(contribs)
     toward_damage = [i for i in order[::-1] if contribs[i] > 0][:TOP_N]
     toward_normal = [i for i in order if contribs[i] < 0][:TOP_N]
@@ -231,6 +235,31 @@ def _nanmean(values) -> float | None:
 
 # ------------------------------------------------------------------ training
 
+INNER_SPLITS = 5
+NORMAL_QUANTILE = 95
+
+
+def inner_threshold(X: pd.DataFrame, y: pd.Series, groups: pd.Series) -> dict:
+    """Threshold from training data only: out-of-fold probabilities of the training
+    normal windows (inner split by group), 95th percentile. The evaluated windows
+    are never used."""
+    uniq = sorted(groups.unique())
+    n = min(INNER_SPLITS, len(uniq))
+    fold_of_group = {g: i % n for i, g in enumerate(uniq)}
+    fold = groups.map(fold_of_group).to_numpy()
+    oof = np.full(len(y), np.nan)
+    for k in range(n):
+        tr, te = fold != k, fold == k
+        if y[tr].nunique() < 2 or not te.any():
+            continue
+        m = XGBClassifier(objective="binary:logistic", **PARAMS)
+        m.fit(X[tr], y[tr], sample_weight=balanced_weights(y[tr]))
+        oof[te] = m.predict_proba(X[te])[:, 1]
+    normal = oof[(y.to_numpy() == 0) & ~np.isnan(oof)]
+    thr = float(np.percentile(normal, NORMAL_QUANTILE)) if len(normal) else 0.5
+    return {"threshold": thr, "n_normal_oof": int(len(normal)), "inner_splits": n}
+
+
 def run_kind(spec: Spec, frame: pd.DataFrame, names: dict, out: Path, kind: str, plans: list):
     """Train and evaluate the models of one data kind; write each model's folder."""
     features = list(spec.features)
@@ -250,8 +279,14 @@ def run_kind(spec: Spec, frame: pd.DataFrame, names: dict, out: Path, kind: str,
         p = binary.predict_proba(X[test])[:, 1]
         c_bin = binary.get_booster().predict(dm, pred_contribs=True)[:, :-1]
         b_part = frame.loc[test, keep].copy()
-        b_part["p_damaged"], b_part["pred_damaged"] = p, (p > 0.5).astype(int)
-        b_part["reason"] = [binary_reason(p[i], xv[i], c_bin[i], name_list) for i in range(len(b_part))]
+        thr_info = {"threshold": 0.5, "mode": "fixed"}
+        if spec.threshold_mode == "normal_p95":
+            groups = (spec.inner_groups or (lambda f: f["source_record"]))(frame)
+            thr_info = {**inner_threshold(X[train], frame.loc[train, "damaged"], groups[train]), "mode": "normal_p95"}
+        thr = thr_info["threshold"]
+        b_part["p_damaged"], b_part["pred_damaged"] = p, (p > thr).astype(int)
+        b_part["threshold"] = thr
+        b_part["reason"] = [binary_reason(p[i], xv[i], c_bin[i], name_list, thr) for i in range(len(b_part))]
 
         multi = XGBClassifier(objective="multi:softprob", num_class=4, **PARAMS)
         multi.fit(X[train], codes[train], sample_weight=balanced_weights(codes[train]))
@@ -267,6 +302,11 @@ def run_kind(spec: Spec, frame: pd.DataFrame, names: dict, out: Path, kind: str,
                                                c_multi[i, grade_idx[i]], name_list) for i in range(len(g_part))]
 
         b_metrics, g_metrics = binary_metrics(b_part, spec.normal_stage, spec.danger_stages), grade_metrics(g_part)
+        b_metrics["threshold"] = thr_info
+        if spec.threshold_mode != "fixed":     # keep the p > 0.5 result next to it for comparison
+            at05 = b_part.assign(pred_damaged=(p > 0.5).astype(int))
+            fixed = binary_metrics(at05, spec.normal_stage, spec.danger_stages)
+            b_metrics["at_threshold_0.5"] = {k: fixed[k] for k in ("false_alarm", "detection_danger", "detection_all_damage")}
         common = {"status": MODEL_STATUS, "data_kind": kind, **plan,
                   "dataset_file": f"dataset/{kind}_dataset.csv", "features": len(features), "params": PARAMS}
         for task, model, part, metrics in (("binary", binary, b_part, b_metrics), ("grade", multi, g_part, g_metrics)):
@@ -301,6 +341,11 @@ def performance_table(out: Path) -> pd.DataFrame:
             row.update({"AUC 정상vs손상": r3(x["auc_normal_vs_damaged"]), "AUC 정상vs위험": r3(x["auc_normal_vs_danger"]),
                         "오경보율": r3(x["false_alarm"]), "위험 탐지율": r3(x["detection_danger"]),
                         "손상 전체 탐지율": r3(x["detection_all_damage"])})
+            if "threshold" in x:
+                row["판정 기준값"] = round(x["threshold"]["threshold"], 3)
+            if "at_threshold_0.5" in x:
+                row["오경보율(기준 0.5)"] = r3(x["at_threshold_0.5"]["false_alarm"])
+                row["위험 탐지율(기준 0.5)"] = r3(x["at_threshold_0.5"]["detection_danger"])
         else:
             row["등급 정확도"] = round(x["grade_accuracy"], 3)
         row["모델 폴더"] = str(f.parent.relative_to(out))
@@ -318,13 +363,19 @@ METRIC_KEYS = ("auc_normal_vs_damaged", "auc_normal_vs_danger", "false_alarm",
                "detection_danger", "detection_all_damage", "grade_accuracy")
 
 
-def main(spec: Spec, argv=None) -> int:
+def main(spec: "Spec | dict", argv=None) -> int:
+    """spec: one Spec, or {variant name: Spec} selected with --variant."""
     parser = argparse.ArgumentParser()
+    if isinstance(spec, dict):
+        parser.add_argument("--variant", choices=list(spec), default=next(iter(spec)),
+                            help="실험 설정 (" + ", ".join(spec) + ")")
     parser.add_argument("--runs-dir", type=Path, default=Path("data/processed/public_grade/xgb_runs"),
                         help="학습 건별 모델·예측·데이터셋 폴더 (git 제외)")
     parser.add_argument("--perf-dir", type=Path, default=Path("results/public_grade/xgb_performance"),
                         help="학습 건별 성능표와 학습 건 목록 (git 포함)")
     args = parser.parse_args(argv)
+    if isinstance(spec, dict):
+        spec = spec[args.variant]
     fingerprint, digests = input_fingerprint(spec)
     index_path = args.perf_dir / INDEX_NAME
     run_id, is_new = resolve_run(index_path, fingerprint, spec.name, date.today().strftime("%Y%m%d"))
@@ -373,6 +424,7 @@ def main(spec: Spec, argv=None) -> int:
         "학습 건": run_id, "학습일": run_id.split("_")[-2], "데이터셋": spec.name,
         "입력 지문": fingerprint, "Window 수": summary["models"]["deg"]["n_windows"],
         "모델 수": 4 * len(plans), "평가 방식": spec.eval_label,
+        "판정 기준": "0.5" if spec.threshold_mode == "fixed" else "정상 데이터 상위 5% (학습 데이터 안에서)",
         "원본 AUC": r3(mean["raw"]["auc_normal_vs_damaged"]), "열화본 AUC": r3(mean["deg"]["auc_normal_vs_damaged"]),
         "원본 오경보율": r3(mean["raw"]["false_alarm"]), "열화본 오경보율": r3(mean["deg"]["false_alarm"]),
         "원본 위험 탐지율": r3(mean["raw"]["detection_danger"]), "열화본 위험 탐지율": r3(mean["deg"]["detection_danger"]),
