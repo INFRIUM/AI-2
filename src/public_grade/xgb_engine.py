@@ -288,18 +288,23 @@ def run_kind(spec: Spec, frame: pd.DataFrame, names: dict, out: Path, kind: str,
         b_part["threshold"] = thr
         b_part["reason"] = [binary_reason(p[i], xv[i], c_bin[i], name_list, thr) for i in range(len(b_part))]
 
-        multi = XGBClassifier(objective="multi:softprob", num_class=4, **PARAMS)
-        multi.fit(X[train], codes[train], sample_weight=balanced_weights(codes[train]))
-        grade_prob = multi.predict_proba(X[test])
+        # grades missing from the training data (e.g. the only DS5 recording held out) get probability 0
+        present = sorted(int(c) for c in codes[train].unique())
+        local = codes[train].map({c: i for i, c in enumerate(present)})
+        multi = XGBClassifier(objective="multi:softprob", num_class=len(present), **PARAMS)
+        multi.fit(X[train], local, sample_weight=balanced_weights(local))
+        grade_prob = np.zeros((int(test.sum()), len(GRADES)))
+        grade_prob[:, present] = multi.predict_proba(X[test])
         grade_idx = grade_prob.argmax(axis=1)
         grade_pred = np.array(GRADES)[grade_idx]
         c_multi = multi.get_booster().predict(dm, pred_contribs=True)[:, :, :-1]
+        local_idx = np.array([present.index(i) for i in grade_idx])
         g_part = frame.loc[test, keep].copy()
         g_part["pred_grade"] = grade_pred
         for k, gname in enumerate(GRADES):
             g_part[f"p_{gname}"] = grade_prob[:, k]
         g_part["grade_reason"] = [grade_reason(grade_pred[i], grade_prob[i, grade_idx[i]], xv[i],
-                                               c_multi[i, grade_idx[i]], name_list) for i in range(len(g_part))]
+                                               c_multi[i, local_idx[i]], name_list) for i in range(len(g_part))]
 
         b_metrics, g_metrics = binary_metrics(b_part, spec.normal_stage, spec.danger_stages), grade_metrics(g_part)
         b_metrics["threshold"] = thr_info
