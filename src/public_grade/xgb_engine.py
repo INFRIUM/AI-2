@@ -56,7 +56,8 @@ LABEL_COLUMNS = ["damaged", "grade"]
 MODEL_STATUS = "개발용 실험 모델 (이미 본 데이터). 배포·API 연결 금지, models/measured/ 아님"
 STAT_NAME = {"mean": "평균", "rms": "RMS", "std": "표준편차", "max": "최댓값", "min": "최솟값",
              "p2p": "최대-최소 폭", "crest": "파고율", "dom_freq": "주된 진동수(Hz)",
-             "band_2_8": "2–8Hz 에너지 비율", "band_8_15": "8–15Hz 에너지 비율", "band_15_25": "15–25Hz 에너지 비율"}
+             "band_2_8": "2–8Hz 에너지 비율", "band_8_15": "8–15Hz 에너지 비율", "band_15_25": "15–25Hz 에너지 비율",
+             "damping": "감쇠비"}
 TOP_N = 3
 
 
@@ -72,6 +73,11 @@ class Spec:
     plan: Callable[[pd.DataFrame], list]        # -> list of fold dicts (see fold dict keys below)
     sensor_dir: Path                            # folder with sensor_info.csv
     extra_columns: tuple = ()                   # extra columns kept in predictions
+    normal_stage: str = "UDS"                   # damage_stage value of the normal state
+    danger_stages: tuple = DANGER               # stages counted as "위험" for detection
+    grade_of: dict | None = None                # damage_stage -> 정상/주의/경고/위험 (None = HBTA GRADE_OF)
+    exclude_stages: tuple = ()                  # stages left out of training and evaluation
+    sensor_dataset: str = "hbta"                # dataset name in sensor_info.csv
 
 
 # fold dict keys: model_folder, test_label, train_label, train_records, test_records,
@@ -109,10 +115,13 @@ def update_index(index_path: Path, row: dict) -> pd.DataFrame:
 
 # ------------------------------------------------------------------ helpers
 
-def label_frame(frame: pd.DataFrame) -> pd.DataFrame:
-    frame = frame[~frame["held"]].copy()
-    frame["damaged"] = (frame["damage_stage"] != "UDS").astype(int)
-    frame["grade"] = frame["damage_stage"].map(GRADE_OF)
+def label_frame(frame: pd.DataFrame, normal_stage: str = "UDS", grade_of: dict | None = None,
+                exclude_stages: tuple = ()) -> pd.DataFrame:
+    frame = frame[~frame["held"] & ~frame["damage_stage"].isin(exclude_stages)].copy()
+    frame["damaged"] = (frame["damage_stage"] != normal_stage).astype(int)
+    frame["grade"] = frame["damage_stage"].map(grade_of or GRADE_OF)
+    if frame["grade"].isna().any():
+        raise ValueError(f"no grade for stages {sorted(frame.loc[frame['grade'].isna(), 'damage_stage'].unique())}")
     return frame.reset_index(drop=True)
 
 
@@ -189,15 +198,16 @@ def save_dataset(frame: pd.DataFrame, features: list, path: Path) -> None:
     frame[ID_COLUMNS + LABEL_COLUMNS + list(features)].to_csv(path, index=False, encoding="utf-8-sig")
 
 
-def binary_metrics(part: pd.DataFrame) -> dict:
-    normal, dmg = part[part["damage_stage"] == "UDS"], part[part["damage_stage"] != "UDS"]
-    danger = part[part["damage_stage"].isin(DANGER)]
+def binary_metrics(part: pd.DataFrame, normal_stage: str = "UDS", danger_stages: tuple = DANGER) -> dict:
+    normal, dmg = part[part["damage_stage"] == normal_stage], part[part["damage_stage"] != normal_stage]
+    danger = part[part["damage_stage"].isin(danger_stages)]
     mean = lambda s: float(s.mean()) if len(s) else None
     return {
         "auc_normal_vs_damaged": auc(normal["p_damaged"], dmg["p_damaged"]),
         "auc_normal_vs_danger": auc(normal["p_damaged"], danger["p_damaged"]),
         "false_alarm": mean(normal["pred_damaged"]),
         "false_alarm_by_record": normal.groupby("source_record")["pred_damaged"].mean().round(3).to_dict(),
+        "false_alarm_by_condition": normal.groupby("condition")["pred_damaged"].mean().round(3).to_dict(),
         "detection_danger": mean(danger["pred_damaged"]),
         "detection_all_damage": mean(dmg["pred_damaged"]),
         "detection_by_state": dmg.groupby("damage_stage")["pred_damaged"].mean().round(3).to_dict(),
@@ -256,7 +266,7 @@ def run_kind(spec: Spec, frame: pd.DataFrame, names: dict, out: Path, kind: str,
         g_part["grade_reason"] = [grade_reason(grade_pred[i], grade_prob[i, grade_idx[i]], xv[i],
                                                c_multi[i, grade_idx[i]], name_list) for i in range(len(g_part))]
 
-        b_metrics, g_metrics = binary_metrics(b_part), grade_metrics(g_part)
+        b_metrics, g_metrics = binary_metrics(b_part, spec.normal_stage, spec.danger_stages), grade_metrics(g_part)
         common = {"status": MODEL_STATUS, "data_kind": kind, **plan,
                   "dataset_file": f"dataset/{kind}_dataset.csv", "features": len(features), "params": PARAMS}
         for task, model, part, metrics in (("binary", binary, b_part, b_metrics), ("grade", multi, g_part, g_metrics)):
@@ -320,7 +330,7 @@ def main(spec: Spec, argv=None) -> int:
     run_id, is_new = resolve_run(index_path, fingerprint, spec.name, date.today().strftime("%Y%m%d"))
     print(f"학습 건: {run_id} ({'새 학습 건' if is_new else '같은 데이터·설정의 기존 학습 건을 다시 만듦 (쌓지 않음)'})")
     frames = spec.load()
-    names = feature_labels(list(spec.features), sensor_labels(spec.sensor_dir, "hbta"))
+    names = feature_labels(list(spec.features), sensor_labels(spec.sensor_dir, spec.sensor_dataset))
     plans = spec.plan(frames["deg"])
     summary = {"run_id": run_id, "dataset": spec.name, "input_fingerprint": fingerprint, "inputs_md5": digests,
                "note": "개발용 실험 (이미 본 데이터, 결과 열람 후). 성능 근거 아님. 모델은 개발용 폴더에만 저장, API 연결 없음",
@@ -331,7 +341,9 @@ def main(spec: Spec, argv=None) -> int:
     write_json(out / "dataset" / "folds.json", {
         "note": "모델 폴더 heldout_<평가 대상> = 그 대상을 빼고 학습, 그 대상으로 평가",
         "input_features": [{"column": f, "name": names[f]} for f in spec.features],
-        "label_columns": {"damaged": "0 정상(UDS), 1 손상(DS1–DS8)", "grade": "v1 기대 등급 (정상/주의/경고/위험)"},
+        "label_columns": {"damaged": f"0 정상({spec.normal_stage}), 1 손상",
+                          "grade": {k: v for k, v in (spec.grade_of or GRADE_OF).items()}},
+        "excluded_stages": list(spec.exclude_stages),
         "folds": plans,
     })
     for kind, frame in frames.items():
