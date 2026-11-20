@@ -73,7 +73,7 @@ Old ADA는 지속 조건 대신 "지표 일치: 정상 상한 초과 n개, 위�
 
 | 데이터셋 | 교량 | 지표 | 정상 기준 Window | Window 간격 |
 |---|---|---|---|---|
-| Ponte Moesa (`1.1`) | Box | 1-TAC 4-2 z (`tac_4_2_z`), 1-TAC 2-3 z (`tac_2_3_z`) | DS2의 train·val·ai2_calib·session(11/26 저녁, 11/27 낮). 지표별 보류 제외 | 60초 Window, 30초 이동 |
+| Ponte Moesa (`1.1`) | Box | **판정 대상에서 제외 (2026-11-20).** 데이터셋에 정상 상태가 없음(DS0부터 철근 노출). 이전 규칙: 1-TAC 4-2 z, 2-3 z, 기준 = DS2 | - | - |
 | HBTA NM (`1.1`) | Truss | AR z 거리(v1과 같음: AI① train으로 평균·공분산), 1-TAC z (`tac_a_b_z`) | UDS 두 날짜(9/22, 9/27)의 val·ai2_calib | 10.24초 |
 | HBTA SM (`1.2`, `1.2-dev`) | Truss | 같은 시각 AR z 차이 (Truss v2 5절과 같음) | 개발용 3개 조건의 날짜 간 차이 204개 (Truss v2와 같은 값: p95 1.2336, 최댓값 3.5956) | 10.24초 |
 | Old ADA (`1.1`) | 점검용 | AR z 거리(표준화 유클리드, train 4회), 1-TAC z | INT 40km/h train 4회(한 회씩 빼고 거리 계산), ai2_calib 3회 | 주행당 1개 |
