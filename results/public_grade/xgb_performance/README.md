@@ -17,3 +17,6 @@
 모델 파일, Window별 예측, 학습 데이터셋은 `data/processed/public_grade/xgb_runs/<학습 건>/`에 있다 (git 제외).
 
 실행: HBTA 스윕 가진 `.venv/bin/python -m src.public_grade.xgb_sm_experiment`, HBTA 노이즈 가진 `.venv/bin/python -m src.public_grade.xgb_nm_experiment`. 공통 엔진은 `src/public_grade/xgb_engine.py`이고, 새 데이터셋은 불러오기와 평가 나누기 설정(Spec)만 추가하면 같은 구조로 쌓인다
+
+
+**Ponte Moesa 학습 건 주의 (2026-11-20):** `ponte_moesa_*` 학습 건의 "정상"(DS2)은 철근을 노출한 손상 상태다. 정상 vs 손상이 아니라 "철근 노출(굴착기 작업 중) vs 더 큰 손상"으로 읽고, 오경보율은 진짜 오경보가 아니다. `docs/AI2_PONTE_MOESA_BASELINE_NOTE.md`
