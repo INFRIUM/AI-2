@@ -1,5 +1,12 @@
 """XGBoost development experiment on Ponte Moesa (Box): raw vs degraded.
 
+INVALID FOR NORMAL/ANOMALY EVALUATION (2026-11-20): Ponte Moesa has no normal
+state. DS2 (the first state after sensor setup 5) already has exposed rebars,
+and DS0/DS1 are damaged too (AI① check). A model that treats DS2 as normal does
+not learn "normal", and its false-alarm rate is not a false-alarm rate. The two
+runs are kept in the run index with status "무효" for traceability only.
+See docs/AI2_PONTE_MOESA_BASELINE_NOTE.md.
+
 DEVELOPMENT ONLY. Ponte Moesa (AI1-public-1.1) was used in v1 and grade v3,
 so every number is "결과 열람 후 실험", not performance evidence. Shared
 training, outputs and run bookkeeping live in xgb_engine.py.
@@ -107,7 +114,8 @@ def fold_plan(frame: pd.DataFrame) -> list[dict]:
 
 
 DOC = __doc__.split("Design")[1].split("Usage")[0].strip()
-COMMON = dict(input_files=INPUT_FILES, features=FEATURES, load=load_frames, plan=fold_plan, sensor_dir=DATA_DIR,
+INVALID = "무효: 데이터셋에 정상 없음 (DS2 철근 노출이 첫 상태, 정상/이상 평가 불가)"
+COMMON = dict(status=INVALID, input_files=INPUT_FILES, features=FEATURES, load=load_frames, plan=fold_plan, sensor_dir=DATA_DIR,
               extra_columns=("subset",), normal_stage="DS2", danger_stages=("DS7",), grade_of=GRADE_OF,
               sensor_dataset="ponte_moesa")
 SPEC = xe.Spec(name="ponte_moesa", design=EVAL_DESIGN, design_doc=DOC,

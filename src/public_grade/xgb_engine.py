@@ -81,6 +81,7 @@ class Spec:
     threshold_mode: str = "fixed"               # "fixed" = p > 0.5, "normal_p95" = p95 of out-of-fold
                                                 # training-normal probabilities (inner split)
     inner_groups: Callable | None = None        # frame -> group label for the inner split (default: recording)
+    status: str = "개발용 실험 (이미 본 데이터, 배포 금지)"   # status written to the run index
 
 
 # fold dict keys: model_folder, test_label, train_label, train_records, test_records,
@@ -435,7 +436,7 @@ def main(spec: "Spec | dict", argv=None) -> int:
         "원본 위험 탐지율": r3(mean["raw"]["detection_danger"]), "열화본 위험 탐지율": r3(mean["deg"]["detection_danger"]),
         "원본 등급 정확도": r3(mean["raw"]["grade_accuracy"]), "열화본 등급 정확도": r3(mean["deg"]["grade_accuracy"]),
         "성능표": f"{run_id}.csv", "모델 폴더": str(out), "코드 커밋": (summary["code_commit"] or "")[:7],
-        "상태": "개발용 실험 (이미 본 데이터, 배포 금지)",
+        "상태": spec.status,
     })
     print(f"성능표: {args.perf_dir / (run_id + '.csv')}  |  학습 건 목록: {index_path} ({len(index)}건)")
     return 0

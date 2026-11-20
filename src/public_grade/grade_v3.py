@@ -409,7 +409,10 @@ def distribution(w: pd.DataFrame, by: list[str]) -> list[dict]:
     return rows
 
 
-BUILDERS = {"ponte_moesa": box, "hbta_nm": hbta_nm, "hbta_sm": hbta_sm, "old_ada": old_ada}
+# Ponte Moesa is excluded (2026-11-20): the dataset has no normal state (DS0 onward already has exposed
+# rebars), so normal/anomaly grading cannot be defined. box() is kept only as a record of the earlier rule.
+# See docs/AI2_PONTE_MOESA_BASELINE_NOTE.md.
+BUILDERS = {"hbta_nm": hbta_nm, "hbta_sm": hbta_sm, "old_ada": old_ada}
 
 
 def main(argv=None) -> int:
