@@ -41,7 +41,7 @@ DIR_12_DEV = Path("data/raw/ai1_public_1.2_dev")
 SM_BOUNDS = {"deg": (1.2336279781, 3.5955651454), "raw": (1.6878412257, 2.4703492908)}
 
 
-AXIS = {"z": "수직", "y": "횡방향"}
+AXIS = {"z": "수직", "y": "횡방향", "x": "교축 방향(x)"}
 
 
 def sensor_labels(data_dir: Path, dataset: str) -> dict:
