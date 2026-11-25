@@ -1,10 +1,10 @@
 # AI② Truss 공개 데이터 평가 결론
 
-작성일: 2026-11-20 (11-22 v4 Vänersborg 추가) · 관련: #13, #16, #18, #19, #23 · 대상 데이터: HBTA(NM·SM), Old ADA (모두 강철 트러스교), v4 Vänersborg (개폐식 트러스교)·LUMO (격자 철탑)
+작성일: 2026-11-20 (11-22 v4 Vänersborg, 11-25 LUMO 추가) · 관련: #13, #16, #18, #19, #23 · 대상 데이터: HBTA(NM·SM), Old ADA (모두 강철 트러스교), v4 Vänersborg (개폐식 트러스교)·LUMO (격자 철탑)
 
 ## 0. 결론
 
-> **Truss는 공개 데이터로 "판정"과 "내부 평가"까지 마쳤고, "검증"은 새 데이터가 없어 할 수 없다.**
+> **HBTA·Old ADA는 "판정"과 "내부 평가"까지 마쳤다. 새 데이터(Vänersborg, LUMO)로 한 v4 검증은 둘 다 통과하지 못했다.**
 > **판정(등급 출력)은 된다.** 모든 Window에 정상/주의/경고/위험 등급과 판정 사유가 나온다. 다만 **그 판정의 정확도가 통과 기준에 못 미친다.**
 > 내부 평가에서 어떤 방법·설정도 열화본(HW 센서 조건) 기준 **오경보 ≤ 5%, 위험 탐지 ≥ 95%를 동시에 넘지 못했다.**
 > 원본(고급 센서)에는 손상 신호가 있지만, HW 센서 조건에서는 그 신호의 핵심인 **횡방향 진동 정보가 사라진다.**
@@ -18,7 +18,7 @@
 
 하나만 좋아서는 안 된다. 모든 Window를 "이상"이라고 하면 탐지는 100%지만 오경보도 100%가 된다. 이 문서에서 "실패", "미달"은 판정이 안 됐다는 뜻이 아니라 **이 기준을 넘지 못했다**는 뜻이다.
 
-> **v4 (새로 받은 실제 구조물 데이터, 2026-11-22 추가):** 보조 평가 Vänersborg(개폐식 트러스교 실제 파단)는 1회 실행에서 **통과 못 함 (잠정)**: 오경보 6.1%, 위험 탐지 6.6%, AUC 0.50. 주 평가 LUMO(격자 철탑)는 AI① 처리 중이다. 교통 진동 조건의 트러스교 손상 탐지는 검증 데이터 없음.
+> **v4 (새로 받은 실제 구조물 데이터, 2026-11-22 추가):** 보조 평가 Vänersborg(개폐식 트러스교 실제 파단)는 1회 실행에서 **통과 못 함 (잠정)**: 오경보 6.1%, 위험 탐지 6.6%, AUC 0.50. 주 평가 LUMO(격자 철탑)도 1회 실행에서 **통과 못 함**: 오경보 3.7%(기준 이하), 위험 탐지 63.5%(기준 미달). 교통 진동 조건의 트러스교 손상 탐지는 검증 데이터 없음.
 
 - API의 `risk_score`, `risk_level`은 계속 `null`이다.
 - Truss 등급은 "검증 아님, 공개 데이터 내부 평가 기준 미달"을 함께 표시할 때만 보여 준다 (5절).
@@ -30,7 +30,7 @@
 |---|---|---|
 | 판정 | 모든 Window에 등급과 판정 사유를 낸다 | ✅ 완료 (규칙 v3, XGBoost) |
 | 내부 평가 | 이미 본 데이터를 측정 단위로 나눠 교차 평가한다. "이 데이터 안에서의 최선의 추정치" | ✅ 완료 (2–4절) |
-| 검증 | 아직 보지 않은 데이터로 사전 등록 후 1회 평가한다 | HBTA·Old ADA는 ❌ 불가 (HBTA 50개 측정을 모두 썼고 Old ADA도 이미 봤다). 새 데이터로 v4 진행 중: Vänersborg 통과 못 함 (잠정), LUMO 처리 중 |
+| 검증 | 아직 보지 않은 데이터로 사전 등록 후 1회 평가한다 | HBTA·Old ADA는 ❌ 불가 (HBTA 50개 측정을 모두 썼고 Old ADA도 이미 봤다). 새 데이터로 v4 검증 완료: Vänersborg 통과 못 함 (잠정), LUMO 통과 못 함 |
 
 ## 2. 사용한 데이터
 
@@ -51,7 +51,7 @@
 | v1 | HBTA NM | 23.5% | 70.1% | 통과 못 함 (둘 다 기준 밖) |
 | v2 | HBTA SM | 0% | **0%** | 통과 못 함 (오경보는 없지만 손상을 하나도 못 잡음. AUC 열화본 z 0.60, 원본 y+z 0.47) |
 | v4 보조 | Vänersborg (개폐식 트러스교, 실제 파단) | 6.1% (1.9%) | **6.6%** (2.2%) | 통과 못 함, 잠정 (판정 Window 91개 < 200). AUC 열화본 AR 0.50, 1-TAC 0.50. `docs/AI2_PUBLIC_GRADE_RESULT_v4_TRUSS.md` |
-| v4 주 평가 | LUMO (격자 철탑, 브레이스 손상) | - | - | AI① 처리 중 |
+| v4 주 평가 | LUMO (격자 철탑, 가새 손상) | 3.7% (1.9%) | **63.5%** (68.3%) | 통과 못 함 (오경보만 기준 이하). AUC 열화본 AR 0.87, 1-TAC 0.89 |
 
 ### 3.2 규칙 v3 (정상 데이터로 경계, 이상의 확실성)
 
@@ -98,6 +98,7 @@ AUC: 0.5 = 동전 던지기, 1.0 = 완벽.
 
 ## 6. 이후 원칙
 
+- HBTA, Old ADA, Vänersborg, LUMO(v4 구간)에 맞춰 같은 데이터로 다시 검증하지 않는다.
 - HBTA, Old ADA에 맞춰 Truss 규칙이나 모델을 더 다듬지 않는다. 이미 본 데이터에 맞출수록 숫자는 좋아지지만 근거는 약해진다.
 - 새 Truss 데이터(손상 시험, 여러 날 정상, NM형 진동, 아직 안 본 데이터)가 생기면, 지금 방법을 사전 등록하고 1회 검증한다.
 - 노력은 검증 데이터(Z24)가 남아 있는 Box에 집중한다. 단, Box 방법은 Truss 결과로 정하지 않고 Z24 정상 데이터(손상 시험 전 상시 계측)로 따로 정한다. Ponte Moesa는 정상 상태가 없어 정상 판별·등급 평가에 쓰지 않는다.
@@ -107,7 +108,7 @@ AUC: 0.5 = 동전 던지기, 1.0 = 완벽.
 | 위치 | 내용 | git |
 |---|---|---|
 | `docs/AI2_PUBLIC_GRADE_RESULT_v1.md`, `docs/AI2_PUBLIC_GRADE_RESULT_v2_TRUSS.md` | v1, v2 검증 결과 | ✅ |
-| `docs/AI2_PUBLIC_GRADE_RESULT_v4_TRUSS.md`, `results/public_grade/truss_v4_vanersborg_summary.json` | v4 검증 결과 (Vänersborg, LUMO는 추가 예정) | ✅ |
+| `docs/AI2_PUBLIC_GRADE_RESULT_v4_TRUSS.md`, `results/public_grade/truss_v4_vanersborg_summary.json`, `results/public_grade/truss_v4_lumo_summary.json`, `results/public_grade/truss_v4/lumo_{deg,raw}_grades.csv` | v4 검증 결과 (Vänersborg, LUMO) | ✅ |
 | `data/processed/public_grade/truss_v4/` | v4 Window별 등급·판정 사유 | 로컬 |
 | `docs/AI2_GRADE_RULE_v3.md`, `docs/AI2_GRADE_RESULT_v3.md`, `results/public_grade/grade_v3_summary.json` | 규칙 v3와 판정 결과 | ✅ |
 | `results/public_grade/xgb_performance/` | XGBoost 학습 건 목록과 학습 건별 성능표 | ✅ |
